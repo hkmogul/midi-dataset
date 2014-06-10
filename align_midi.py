@@ -41,7 +41,7 @@ def dpcore(M, pen):
 def dpmod(M, gully=.95, pen=None):
     '''
     Use dynamic programming to find a min-cost path through matrix M.
-    
+
     Input:
         M - Matrix to find path through
         gully - Sequences must match up to this proportion of shorter sequence, default .9
@@ -50,32 +50,32 @@ def dpmod(M, gully=.95, pen=None):
         p, q - State sequence
         score - DP score
     '''
-    
+
     # Set penality = median(M) if none was provided
     if pen is None:
         pen = np.percentile(M, 90)
     pen = float(pen)
-    
+
     # Compute path cost matrix
     D, phi = dpcore(M, pen)
-    
+
     # Traceback from lowest-cost point on bottom or right edge
     gully = int(gully*min(D.shape[0], D.shape[1]))
     i = np.argmin(D[gully:, -1]) + gully
     j = np.argmin(D[-1, gully:]) + gully
-    
+
     if D[-1, j] > D[i, -1]:
         j = D.shape[1] - 1
     else:
         i = D.shape[0] - 1
-    
+
     # Score is the final score of the best path
     score = D[i, j]
-    
+
     # These vectors will give the lowest-cost path
     p = np.array([i])
     q = np.array([j])
-    
+
     # Until we reach an edge
     while i > 0 and j > 0:
         # If the tracback matrix indicates a diagonal move...
@@ -91,10 +91,10 @@ def dpmod(M, gully=.95, pen=None):
         # Add these indices into the path arrays
         p = np.append(i, p)
         q = np.append(j, q)
-        
+
     # Normalize score
     score = score/q.shape[0]
-    
+
     return p, q, score
 
 # <codecell>
@@ -103,7 +103,7 @@ def maptimes(t, intime, outtime):
     '''
     map the times in t according to the mapping that each point in intime corresponds to that value in outtime
     2008-03-20 Dan Ellis dpwe@ee.columbia.edu
-    
+
     Input:
         t - list of times to map
         intimes - original times
@@ -116,11 +116,11 @@ def maptimes(t, intime, outtime):
     pregap = max(intime[0], outtime[0])
     intime = np.append(intime[0] - pregap, intime)
     outtime = np.append(outtime[0] - pregap, outtime)
-    
+
     # Make sure there's a point beyond the end of both sequences
     din = np.diff(np.append(intime, intime[-1] + 1))
     dout = np.diff(np.append(outtime, outtime[-1] + 1))
-    
+
     # Decidedly faster than outer-product-array way
     u = np.array(t)
     for i in xrange(t.shape[0]):
@@ -136,7 +136,7 @@ def maptimes(t, intime, outtime):
 def midi_to_cqt(midi, method=None, fs=22050, hop=512):
     '''
     Feature extraction routine for midi data, converts to a drum-free, percussion-suppressed CQT.
-    
+
     Input:
         midi - pretty_midi.PrettyMIDI object
         method - synthesis method to pass to the midi object's synthesize method
@@ -157,11 +157,12 @@ def midi_to_cqt(midi, method=None, fs=22050, hop=512):
     H, P = librosa.decompose.hpss(librosa.stft(midi_audio))
     midi_audio_harmonic = librosa.istft(H)
     # Compute log frequency spectrogram of audio synthesized from MIDI
+    fmin=librosa.midi_to_hz(36)
     midi_gram = np.abs(librosa.cqt(y=midi_audio_harmonic,
                                    sr=fs,
                                    hop_length=hop,
                                    fmin=librosa.midi_to_hz(36),
-                                   n_bins=60,
+                                   bins_per_octave = 12,
                                    tuning=0.0))**2
     return midi_gram
 
@@ -171,7 +172,7 @@ def audio_to_cqt_and_onset_strength(audio, fs=22050, hop=512):
     '''
     Feature extraction for audio data.
     Gets a power CQT of harmonic component and onset strength signal of percussive.
-    
+
     Input:
         midi - pretty_midi.PrettyMIDI object
         fs - sampling rate to synthesize audio at, default 22050
@@ -189,7 +190,7 @@ def audio_to_cqt_and_onset_strength(audio, fs=22050, hop=512):
                                     sr=fs,
                                     hop_length=hop,
                                     fmin=librosa.midi_to_hz(36),
-                                    n_bins=60))**2
+                                    bins_per_octave=12))**2
     # Beat track the audio file at 4x the hop rate
     audio_onset_strength = librosa.onset.onset_strength(audio_percussive, hop_length=hop/4, sr=fs)
     return audio_gram, audio_onset_strength
@@ -199,7 +200,7 @@ def audio_to_cqt_and_onset_strength(audio, fs=22050, hop=512):
 def midi_beat_track(midi, fs=22050, hop=512.):
     '''
     Perform midi beat tracking and force the tempo to be high
-    
+
     Input:
         midi - pretty_midi.PrettyMIDI object
         fs - sample rate to sample beats with
@@ -228,7 +229,7 @@ def midi_beat_track(midi, fs=22050, hop=512.):
 def post_process_cqt(gram, beats):
     '''
     Given a power CQT, beat-synchronize it, take log, and normalize
-    
+
     Input:
         gram - np.ndarray, power CQT
         beats - np.ndarray, beat locations in frame number
@@ -249,7 +250,7 @@ def post_process_cqt(gram, beats):
 def adjust_midi(midi, original_times, new_times):
     '''
     Wrapper function to adjust all time locations in a midi object using maptimes
-    
+
     Input:
         midi - pretty_midi.PrettyMIDI object
         original_times - np.ndarray of reference times
@@ -276,4 +277,3 @@ def adjust_midi(midi, original_times, new_times):
     for n, bend in enumerate([bend for instrument in midi_aligned.instruments for bend in instrument.pitch_bends]):
         bend.time = (aligned_pitch_bends[n] > 0)*aligned_pitch_bends[n]
     return midi_aligned
-
