@@ -19,9 +19,10 @@ import align_midi
 import scipy.io
 
 # <codecell>
-
+#set interval to command line argument
+interval = int(sys.argv[1])
 SF2_PATH = '../../Performer Synchronization Measure/SGM-V2.01.sf2'
-OUTPUT_PATH = 'midi-aligned-additive-dpmod-min-shift'
+OUTPUT_PATH = 'midi-aligned-additive-dpmod-shift-'+str(interval)
 BASE_PATH = '../data/sanity'
 if not os.path.exists(os.path.join(BASE_PATH, OUTPUT_PATH)):
     os.makedirs(os.path.join(BASE_PATH, OUTPUT_PATH))
@@ -131,32 +132,19 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     # Beat-align and log/normalize the audio CQT
     audio_gram = align_midi.post_process_cqt(audio_gram, audio_beats)
 
-    score_list = np.zeros(13)
-    #dictionary of data to choose from when finding min for plotting
-    dict = {}
-    for interval in range(-6,7,1):
-      m_gram = shift_cqt(midi_gram, interval)
+    # shift by set amounts
+    shift_gram = shift_cqt(midi_gram, interval)
       # Get similarity matrix
-      similarity_matrix = scipy.spatial.distance.cdist(m_gram.T, audio_gram.T, metric='cosine')
+    similarity_matrix = scipy.spatial.distance.cdist(shift_gram.T, audio_gram.T, metric='cosine')
       # Get best path through matrix
-      p, q, score = align_midi.dpmod(similarity_matrix)
-      score_list[interval+6] = score
-      dict['p'+str(interval)] = p
-      dict['q'+str(interval)] = q
-      dict['sim_mat'+str(interval)] = similarity_matrix
-
-    min_index = np.argmin(score_list)
-    interval = min_index -6
-    p = dict['p'+str(interval)]
-    q = dict['q'+str(interval)]
-    similarity_matrix = dict['sim_mat'+str(interval)]
+    p, q, score = align_midi.dpmod(similarity_matrix)
 
 
     # Plot log-fs grams
     plt.figure(figsize=(36, 24))
     ax = plt.subplot2grid((4, 3), (0, 0), colspan=3)
     plt.title('MIDI Synthesized')
-    librosa.display.specshow(midi_gram,
+    librosa.display.specshow(shift_gram,
                              x_axis='frames',
                              y_axis='cqt_note',
                              fmin=librosa.midi_to_hz(36),
@@ -174,7 +162,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     # Plot distance at each point of the lowst-cost path
     ax = plt.subplot2grid((4, 3), (2, 0), rowspan=2)
     plt.plot([similarity_matrix[p_v, q_v] for p_v, q_v in zip(p, q)])
-    plt.title('Distance at each point on lowest-cost path- Minimum Harmonic Interval: {}'.format(interval))
+    plt.title('Distance at each point on lowest-cost path- Forced Shift Interval: {} half steps'.format(interval))
 
     # Plot similarity matrix and best path through it
     ax = plt.subplot2grid((4, 3), (2, 1), rowspan=2)
