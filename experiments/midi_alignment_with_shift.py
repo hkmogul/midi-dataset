@@ -46,25 +46,29 @@ def shift_cqt(cqt, interval):
   new_cqt = np.zeros(cqt.shape)
   min_value = np.amin(cqt)
   end_index = cqt.shape[0]-1
-  fill_array = min_value*np.ones((interval, cqt.shape[1]))
+  fill_array = min_value*np.ones((abs(interval), cqt.shape[1]))
   # If we are shifting the cqt down, we need to replace the first rows with
   # zero vectors.  If we are shifting it upwards, we need to replace the last
   # rows with zero vectors.
-  if interval < 0:
-    for i in range (0, abs(interval)):
-      new_cqt[i] = min_value*np.ones((1, cqt.shape[1]))
-    # now replace rest of rows in new cqt with the original matrices
-    for i in range (interval, end_index):
-      new_cqt[i] = cqt[i-interval]
-  elif interval> 0:
-    for i in range (0, end_index-interval):
-      new_cqt[i] = cqt[i+interval]
-    for i in range (end_index-interval, end_index):
-      new_cqt[i] = min_value*np.ones((1,cqt.shape[1]))
+  # roll down axis 0 by interval amount
+  if interval != 0:
+    cqt_roll = np.roll(cqt, interval, axis = 0)
+    if interval < 0:
+      #take slice of lower rows
+
+      cqt_slice = cqt_roll[0:(cqt.shape[0]-abs(interval))]
+
+      #stack with fill_array
+      new_cqt = np.vstack((fill_array,cqt_slice))
+    elif interval> 0:
+      #take slice of upper rows
+      cqt_slice = cqt_roll[interval:]
+      #stack with fill_array
+      new_cqt = np.vstack((cqt_slice, fill_array))
   else:
     new_cqt = cqt
+  print "Shift: "+str(interval)+" Size of old CQT "+ str(cqt.shape)+ " Size of new CQT "+ str(new_cqt.shape)
   return new_cqt
-
 
 # <codecell>
 
