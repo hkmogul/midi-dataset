@@ -46,7 +46,7 @@ def shift_cqt(cqt, interval):
   new_cqt = np.zeros(cqt.shape)
   min_value = np.amin(cqt)
   end_index = cqt.shape[0]-1
-  fill_array = min_value*np.ones((abs(interval), cqt.shape[1]))
+  fill_array = min_value*np.ones((abs(interval)+1, cqt.shape[1]))
   # If we are shifting the cqt down, we need to replace the first rows with
   # zero vectors.  If we are shifting it upwards, we need to replace the last
   # rows with zero vectors.
@@ -55,21 +55,17 @@ def shift_cqt(cqt, interval):
     cqt_roll = np.roll(cqt, interval, axis = 0)
     if interval < 0:
       #take slice of lower rows
-
-      cqt_slice = cqt_roll[0:(cqt.shape[0]-abs(interval))]
-
-      #stack with fill_array
-      new_cqt = np.vstack((fill_array,cqt_slice))
-    elif interval> 0:
-      #take slice of upper rows
-      cqt_slice = cqt_roll[interval:]
+      cqt_slice = cqt_roll[abs(interval):end_index]
       #stack with fill_array
       new_cqt = np.vstack((cqt_slice, fill_array))
+    elif interval> 0:
+      #take slice of upper rows
+      cqt_slice = cqt_roll[0:(cqt.shape[0]-abs(interval))]
+      #stack with fill_array
+      new_cqt = np.vstack((fill_array,cqt_slice))
   else:
     new_cqt = cqt
-  print "Shift: "+str(interval)+" Size of old CQT "+ str(cqt.shape)+ " Size of new CQT "+ str(new_cqt.shape)
   return new_cqt
-
 # <codecell>
 
 def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_diagnostics=True):
