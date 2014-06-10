@@ -61,7 +61,7 @@ def shift_cqt(cqt, interval):
       new_cqt = np.vstack((cqt_slice, fill_array))
     elif interval> 0:
       #take slice of upper rows
-      cqt_slice = cqt_roll[0:(cqt.shape[0]-abs(interval))]
+      cqt_slice = cqt_roll[0:(cqt.shape[0]-abs(interval)-1)]
       #stack with fill_array
       new_cqt = np.vstack((fill_array,cqt_slice))
 
