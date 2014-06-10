@@ -60,11 +60,12 @@ def shift_cqt(cqt, interval):
       new_cqt = np.vstack((cqt_slice, fill_array))
     elif interval> 0:
       #take slice of upper rows
-      cqt_slice = cqt_roll[0:(cqt.shape[0]-abs(interval))]
+      cqt_slice = cqt_roll[0:(cqt.shape[0]-abs(interval)-1)]
       #stack with fill_array
       new_cqt = np.vstack((fill_array,cqt_slice))
   else:
     new_cqt = cqt
+
   return new_cqt
 # <codecell>
 
@@ -170,7 +171,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     # Plot distance at each point of the lowst-cost path
     ax = plt.subplot2grid((4, 3), (2, 0), rowspan=2)
     plt.plot([similarity_matrix[p_v, q_v] for p_v, q_v in zip(p, q)])
-    plt.title('Distance at each point on lowest-cost path- Minimum Harmonic Interval: {}'.format(interval))
+    plt.title('Distance at each point on lowest-cost path- Minimum Harmonic Interval: {} Half Steps'.format(interval))
 
     # Plot similarity matrix and best path through it
     ax = plt.subplot2grid((4, 3), (2, 1), rowspan=2)
@@ -203,27 +204,27 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
         # Save the figures
         plt.savefig(output_midi_filename.replace('.mid', '.pdf'))
         # Load in the audio data (needed for writing out)
-        audio, fs = librosa.load(mp3_filename, sr=None)
-        # Synthesize the aligned midi
-        midi_audio_aligned = m_aligned.synthesize(fs=fs, method=SF2_PATH)
-        # Trim to the same size as audio
-        if midi_audio_aligned.shape[0] > audio.shape[0]:
-            midi_audio_aligned = midi_audio_aligned[:audio.shape[0]]
-        else:
-            midi_audio_aligned = np.append(midi_audio_aligned, np.zeros(audio.shape[0] - midi_audio_aligned.shape[0]))
-        # Write out to temporary .wav file
-        librosa.output.write_wav(output_midi_filename.replace('.mid', '.wav'),
-                                 np.vstack([midi_audio_aligned, audio]).T, fs)
-        # Convert to mp3
-        subprocess.check_output(['ffmpeg',
-                         '-i',
-                         output_midi_filename.replace('.mid', '.wav'),
-                         '-ab',
-                         '128k',
-                         '-y',
-                         output_midi_filename.replace('.mid', '.mp3')])
-        # Remove temporary .wav file
-        os.remove(output_midi_filename.replace('.mid', '.wav'))
+        # audio, fs = librosa.load(mp3_filename, sr=None)
+        # # Synthesize the aligned midi
+        # midi_audio_aligned = m_aligned.synthesize(fs=fs, method=SF2_PATH)
+        # # Trim to the same size as audio
+        # if midi_audio_aligned.shape[0] > audio.shape[0]:
+        #     midi_audio_aligned = midi_audio_aligned[:audio.shape[0]]
+        # else:
+        #     midi_audio_aligned = np.append(midi_audio_aligned, np.zeros(audio.shape[0] - midi_audio_aligned.shape[0]))
+        # # Write out to temporary .wav file
+        # librosa.output.write_wav(output_midi_filename.replace('.mid', '.wav'),
+        #                          np.vstack([midi_audio_aligned, audio]).T, fs)
+        # # Convert to mp3
+        # subprocess.check_output(['ffmpeg',
+        #                  '-i',
+        #                  output_midi_filename.replace('.mid', '.wav'),
+        #                  '-ab',
+        #                  '128k',
+        #                  '-y',
+        #                  output_midi_filename.replace('.mid', '.mp3')])
+        # # Remove temporary .wav file
+        # os.remove(output_midi_filename.replace('.mid', '.wav'))
         # Save a .mat of the results
         scipy.io.savemat(output_midi_filename.replace('.mid', '.mat'),
                          {'similarity_matrix': similarity_matrix,
