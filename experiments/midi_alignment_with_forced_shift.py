@@ -22,7 +22,7 @@ import scipy.io
 #set interval to command line argument
 interval = int(sys.argv[1])
 SF2_PATH = '../../Performer Synchronization Measure/SGM-V2.01.sf2'
-OUTPUT_PATH = 'midi-aligned-additive-dpmod-shift-'+str(interval)
+OUTPUT_PATH = 'midi-aligned-additive-dpmod-shift_'+str(interval)
 BASE_PATH = '../data/sanity'
 if not os.path.exists(os.path.join(BASE_PATH, OUTPUT_PATH)):
     os.makedirs(os.path.join(BASE_PATH, OUTPUT_PATH))
