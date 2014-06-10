@@ -48,7 +48,6 @@ def shift_cqt(cqt, interval):
   min_value = np.amin(cqt)
   end_index = cqt.shape[0]-1
   fill_array = min_value*np.ones((abs(interval)+1, cqt.shape[1]))
-  print fill_array.shape
   # If we are shifting the cqt down, we need to replace the first rows with
   # zero vectors.  If we are shifting it upwards, we need to replace the last
   # rows with zero vectors.
@@ -58,8 +57,6 @@ def shift_cqt(cqt, interval):
     if interval < 0:
       #take slice of lower rows
       cqt_slice = cqt_roll[abs(interval):end_index]
-      print str(abs(interval))+ " to "+ str(end_index)
-      print cqt_slice.shape
       #stack with fill_array
       new_cqt = np.vstack((cqt_slice, fill_array))
     elif interval> 0:
@@ -70,7 +67,6 @@ def shift_cqt(cqt, interval):
 
   else:
     new_cqt = cqt
-  print new_cqt.shape
   return new_cqt
 
 # <codecell>
