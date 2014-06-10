@@ -55,18 +55,18 @@ def shift_cqt(cqt, interval):
     cqt_roll = np.roll(cqt, interval, axis = 0)
     if interval < 0:
       #take slice of lower rows
-      cqt_slice = cqt_roll[abs(interval):end_index]
+      cqt_slice = cqt_roll[0:end_index-abs(interval)]
       #stack with fill_array
       new_cqt = np.vstack((cqt_slice, fill_array))
     elif interval> 0:
       #take slice of upper rows
-      cqt_slice = cqt_roll[0:(cqt.shape[0]-abs(interval)-1)]
+      cqt_slice = cqt_roll[0:(end_index-interval)]
       #stack with fill_array
       new_cqt = np.vstack((fill_array,cqt_slice))
   else:
     new_cqt = cqt
-
   return new_cqt
+
 # <codecell>
 
 def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_diagnostics=True):
