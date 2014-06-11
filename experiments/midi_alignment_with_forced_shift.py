@@ -195,7 +195,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
         # Load in the audio data (needed for writing out)
         # audio, fs = librosa.load(mp3_filename, sr=None)
         # # Synthesize the aligned midi
-        # midi_audio_aligned = m_aligned.synthesize(fs=fs, method=SF2_PATH)
+        # midi_audio_aligned = m_aligned.synthesize(fs=fs, sf2_path=SF2_PATH)
         # # Trim to the same size as audio
         # if midi_audio_aligned.shape[0] > audio.shape[0]:
         #     midi_audio_aligned = midi_audio_aligned[:audio.shape[0]]
@@ -217,7 +217,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
         # Save a .mat of the results
         scipy.io.savemat(output_midi_filename.replace('.mid', '.mat'),
                          {'similarity_matrix': similarity_matrix,
-                          'p' : p, 'q': q, 'score': score})
+                          'p': p, 'q': q, 'score': score})
     # If we aren't outputting a .pdf, show the plot
     else:
         plt.show()
