@@ -34,17 +34,17 @@ def to_cqt_npy(filename):
     return os.path.splitext(filename)[0] + '_cqt.npy'
 def to_beats_npy(filename):
     ''' Given some/path/file.mid or .mp3, return some/path/file_beats.npy '''
-    return os.path.splitext(filename)[0] + '_beats.npy' 
+    return os.path.splitext(filename)[0] + '_beats.npy'
 def to_onset_strength_npy(filename):
     ''' Given some/path/file.mid or .mp3, return some/path/file_onset_strength.npy '''
-    return os.path.splitext(filename)[0] + '_onset_strength.npy' 
+    return os.path.splitext(filename)[0] + '_onset_strength.npy'
 
 # <codecell>
 
 def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_diagnostics=True):
     '''
     Helper function for aligning a MIDI file to an audio file.
-    
+
     :parameters:
         - mp3_filename : str
             Full path to a .mp3 file.
@@ -62,11 +62,11 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     except:
         print "Error loading {}".format(midi_filename)
         return
-        
+
     print "Aligning {}".format(os.path.split(midi_filename)[1])
-    
+
     # Cache audio CQT and onset strength
-    if not os.path.exists(to_onset_strength_npy(mp3_filename)) or not os.path.exists(to_cqt_npy(mp3_filename)):        
+    if not os.path.exists(to_onset_strength_npy(mp3_filename)) or not os.path.exists(to_cqt_npy(mp3_filename)):
         print "Creating CQT and onset strength signal for {}".format(os.path.split(mp3_filename)[1])
         # Don't need to load in audio multiple times
         audio, fs = librosa.load(mp3_filename)
@@ -74,10 +74,10 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
         audio_gram, audio_onset_strength = align_midi.audio_to_cqt_and_onset_strength(audio, fs=fs)
         # Write out
         np.save(to_onset_strength_npy(mp3_filename), audio_onset_strength)
-        np.save(to_cqt_npy(mp3_filename), audio_gram)  
+        np.save(to_cqt_npy(mp3_filename), audio_gram)
 
     # Cache MIDI CQT
-    if not os.path.exists(to_cqt_npy(midi_filename)):      
+    if not os.path.exists(to_cqt_npy(midi_filename)):
         print "Creating CQT for {}".format(os.path.split(midi_filename)[1])
         # Generate synthetic MIDI CQT
         midi_gram = align_midi.midi_to_cqt(m, SF2_PATH)
@@ -87,19 +87,19 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
         midi_gram = align_midi.post_process_cqt(midi_gram, midi_beats)
         # Write out
         np.save(to_cqt_npy(midi_filename), midi_gram)
-            
+
     # Load in CQTs
     audio_gram = np.load(to_cqt_npy(mp3_filename))
     midi_gram = np.load(to_cqt_npy(midi_filename))
     # and audio onset strength signal
     audio_onset_strength = np.load(to_onset_strength_npy(mp3_filename))
-    
+
     # Compute beats
     midi_beats, bpm = align_midi.midi_beat_track(m)
     audio_beats = librosa.beat.beat_track(onsets=audio_onset_strength, hop_length=512/4, bpm=bpm)[1]/4
     # Beat-align and log/normalize the audio CQT
     audio_gram = align_midi.post_process_cqt(audio_gram, audio_beats)
-    
+
     # Plot log-fs grams
     plt.figure(figsize=(36, 24))
     ax = plt.subplot2grid((4, 3), (0, 0), colspan=3)
@@ -116,12 +116,12 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
                              y_axis='cqt_note',
                              fmin=librosa.midi_to_hz(36),
                              fmax=librosa.midi_to_hz(96))
-    
+
     # Get similarity matrix
     similarity_matrix = scipy.spatial.distance.cdist(midi_gram.T, audio_gram.T, metric='cosine')
     # Get best path through matrix
     p, q, score = align_midi.dpmod(similarity_matrix)
-    
+
     # Plot distance at each point of the lowst-cost path
     ax = plt.subplot2grid((4, 3), (2, 0), rowspan=2)
     plt.plot([similarity_matrix[p_v, q_v] for p_v, q_v in zip(p, q)])
@@ -137,10 +137,10 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     plt.plot(p, q, 'r.', ms=.2)
     plt.axis(tight)
     plt.title('Similarity matrix and lowest-cost path, cost={}'.format(score))
-    
+
     # Adjust MIDI timing
     m_aligned = align_midi.adjust_midi(m, librosa.frames_to_time(midi_beats)[p], librosa.frames_to_time(audio_beats)[q])
-    
+
     # Plot alignment
     ax = plt.subplot2grid((4, 3), (2, 2), rowspan=2)
     note_ons = np.array([note.start for instrument in m.instruments for note in instrument.events])
@@ -153,14 +153,16 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     # Write out the aligned file
     if output_midi_filename is not None:
         m_aligned.write(output_midi_filename)
-    
+
     if output_diagnostics:
         # Save the figures
         plt.savefig(output_midi_filename.replace('.mid', '.pdf'))
         # Load in the audio data (needed for writing out)
         audio, fs = librosa.load(mp3_filename, sr=None)
         # Synthesize the aligned midi
+        # midi_audio_aligned = m_aligned.fluidsynth()
         midi_audio_aligned = m_aligned.fluidsynth(fs=fs, sf2_path=SF2_PATH)
+
         # Trim to the same size as audio
         if midi_audio_aligned.shape[0] > audio.shape[0]:
             midi_audio_aligned = midi_audio_aligned[:audio.shape[0]]
