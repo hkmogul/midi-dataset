@@ -71,33 +71,27 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     print "Aligning {}".format(os.path.split(midi_filename)[1])
 
     # Cache audio CQT and onset strength
-    if not os.path.exists(to_onset_strength_npy(mp3_filename)) or not os.path.exists(to_cqt_npy(mp3_filename)):
-        print "Creating CQT and onset strength signal for {}".format(os.path.split(mp3_filename)[1])
-        # Don't need to load in audio multiple times
-        audio, fs = librosa.load(mp3_filename)
-        # Create audio CQT, which is just frame-wise power, and onset strength
-        audio_gram, audio_onset_strength = align_midi.audio_to_cqt_and_onset_strength(audio, fs=fs)
-        # Write out
-        np.save(to_onset_strength_npy(mp3_filename), audio_onset_strength)
-        np.save(to_cqt_npy(mp3_filename), audio_gram)
+    print "Creating CQT and onset strength signal for {}".format(os.path.split(mp3_filename)[1])
+    # Don't need to load in audio multiple times
+    audio, fs = librosa.load(mp3_filename)
+    # Create audio CQT, which is just frame-wise power, and onset strength
+    audio_gram, audio_onset_strength = align_midi.audio_to_cqt_and_onset_strength(audio, fs=fs)
 
-    # Cache MIDI CQT
-    if not os.path.exists(to_cqt_npy(midi_filename)):
-        print "Creating CQT for {}".format(os.path.split(midi_filename)[1])
-        # Generate synthetic MIDI CQT
-        midi_gram = align_midi.midi_to_cqt(m, SF2_PATH)
-        # Get beats
-        midi_beats, bpm = align_midi.midi_beat_track(m)
-        # Beat synchronize and normalize
-        midi_gram = align_midi.post_process_cqt(midi_gram, midi_beats)
-        # Write out
-        np.save(to_cqt_npy(midi_filename), midi_gram)
+
+    print "Creating CQT for {}".format(os.path.split(midi_filename)[1])
+    # Generate synthetic MIDI CQT
+    midi_gram = align_midi.midi_to_cqt(m, SF2_PATH)
+    # Get beats
+    midi_beats, bpm = align_midi.midi_beat_track(m)
+    # Beat synchronize and normalize
+    midi_gram = align_midi.post_process_cqt(midi_gram, midi_beats)
+
 
     # Load in CQTs
-    audio_gram = np.load(to_cqt_npy(mp3_filename))
-    midi_gram = np.load(to_cqt_npy(midi_filename))
+
+    # midi_gram = align_midi.midi_to_piano_cqt(m)
     # and audio onset strength signal
-    audio_onset_strength = np.load(to_onset_strength_npy(mp3_filename))
+    # audio_onset_strength = np.load(to_onset_strength_npy(mp3_filename))
 
     # Compute beats
     midi_beats, bpm = align_midi.midi_beat_track(m)
