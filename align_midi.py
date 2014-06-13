@@ -166,6 +166,12 @@ def midi_to_cqt(midi, sf2_path=None, fs=22050, hop=512):
     return midi_gram
 
 # <codecell>
+def midi_to_piano_cqt(midi):
+  piano_roll = midi.get_piano_roll(times = midi.get_beats())
+  pianodb = 10*np.log10(piano_roll + 1e-10)
+  piano_subset = piano_roll[36:96] #want just C3 to C8 of piano roll
+  # TODO: adjust piano roll row info to match frame and hopping
+  return piano_subset
 
 def audio_to_cqt_and_onset_strength(audio, fs=22050, hop=512):
     '''
@@ -189,6 +195,7 @@ def audio_to_cqt_and_onset_strength(audio, fs=22050, hop=512):
                                     sr=fs,
                                     hop_length=hop,
                                     fmin=librosa.midi_to_hz(36),
+                                    fmax = librosa.midi_to_hz(96),
                                     bins_per_octave=12))**2
     # Beat track the audio file at 4x the hop rate
     audio_onset_strength = librosa.onset.onset_strength(audio_percussive, hop_length=hop/4, sr=fs)
