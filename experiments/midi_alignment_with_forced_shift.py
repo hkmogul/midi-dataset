@@ -22,9 +22,8 @@ import scipy.io
 #set interval to command line argument
 interval = int(sys.argv[1])
 write_mp3 = False
-if len(sys.argv) > 2:
-  if sys.argv[2].lower() == '-w':
-    write_mp3 = True
+if '-w' in sys.argv:
+  write_mp3 = True
 
 
 SF2_PATH = '../../Performer Synchronization Measure/SGM-V2.01.sf2'
