@@ -18,11 +18,14 @@ sys.path.append('../')
 import align_midi
 import scipy.io
 
+piano = False
 write_mp3 = False
 if len(sys.argv) > 1:
   if sys.argv[1] == '-w':
     write_mp3 = True
-
+if len(sys.argv) > 2:
+  if sys.argv[2] == '-p':
+    piano = True
 # <codecell>
 
 SF2_PATH = '../../Performer Synchronization Measure/SGM-V2.01.sf2'
@@ -80,11 +83,18 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
 
     print "Creating CQT for {}".format(os.path.split(midi_filename)[1])
     # Generate synthetic MIDI CQT
-    midi_gram = align_midi.midi_to_cqt(m, SF2_PATH)
-    # Get beats
-    midi_beats, bpm = align_midi.midi_beat_track(m)
-    # Beat synchronize and normalize
-    midi_gram = align_midi.post_process_cqt(midi_gram, midi_beats)
+    if piano:
+      midi_gram = align_midi.midi_to_piano_cqt(m)
+      log_gram = librosa.logamplitude(midi_gram, ref_power=midi_gram.max())
+      # Normalize columns and return
+      midi_gram= librosa.util.normalize(log_gram, axis=0)
+      midi_gram = midi_gram + 1
+    else:
+      midi_gram = align_midi.midi_to_cqt(m, SF2_PATH)
+      # Get beats
+      midi_beats, bpm = align_midi.midi_beat_track(m)
+      # Beat synchronize and normalize
+      midi_gram = align_midi.post_process_cqt(midi_gram, midi_beats)
 
 
     # Load in CQTs
