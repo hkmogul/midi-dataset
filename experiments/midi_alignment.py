@@ -21,21 +21,15 @@ import scipy.io
 piano = False
 write_mp3 = False
 use_mp3_data = False# choice of using preexisting data
-# if len(sys.argv) > 1:
-#   if sys.argv[1] == '-w':
-#     write_mp3 = True
-# if len(sys.argv) > 2:
-#   if sys.argv[2] == '-p':
-#     piano = True
-# if len(sys.argv) > 3:
-#   if sys.argv[3] == '-u':
-#     use_mp3_data = True
+interval = 0
 if '-w' in sys.argv:
   write_mp3 = True
 if '-p' in sys.argv:
   piano = True
 if '-u' in sys.argv:
   use_mp3_data = True
+if '-i' in sys.argv:
+  interval = -12
 # <codecell>
 
 SF2_PATH = '../../Performer Synchronization Measure/SGM-V2.01.sf2'
@@ -45,6 +39,31 @@ if not os.path.exists(os.path.join(BASE_PATH, OUTPUT_PATH)):
     os.makedirs(os.path.join(BASE_PATH, OUTPUT_PATH))
 
 # <codecell>
+def shift_cqt(cqt, interval):
+  ''' Shifts a cqt matrix by the given interval '''
+  new_cqt = np.zeros(cqt.shape)
+  min_value = np.amin(cqt)
+  end_index = cqt.shape[0]-1
+  fill_array = min_value*np.ones((abs(interval)+1, cqt.shape[1]))
+  # If we are shifting the cqt down, we need to replace the first rows with
+  # zero vectors.  If we are shifting it upwards, we need to replace the last
+  # rows with zero vectors.
+  # roll down axis 0 by interval amount
+  if interval != 0:
+    cqt_roll = np.roll(cqt, interval, axis = 0)
+    if interval < 0:
+      #take slice of lower rows
+      cqt_slice = cqt_roll[0:end_index-abs(interval)]
+      #stack with fill_array
+      new_cqt = np.vstack((cqt_slice, fill_array))
+    elif interval> 0:
+      #take slice of upper rows
+      cqt_slice = cqt_roll[0:(end_index-interval)]
+      #stack with fill_array
+      new_cqt = np.vstack((fill_array,cqt_slice))
+  else:
+    new_cqt = cqt
+  return new_cqt
 
 # Utility functions for converting between filenames
 def to_cqt_npy(filename):
@@ -113,7 +132,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
       # Beat synchronize and normalize
       midi_gram = align_midi.post_process_cqt(midi_gram, midi_beats)
 
-
+    midi_gram = shift_cqt(midi_gram, interval)
     # Load in CQTs
 
     # midi_gram = align_midi.midi_to_piano_cqt(m)
