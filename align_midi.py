@@ -154,21 +154,22 @@ def midi_to_cqt(midi, sf2_path=None, fs=22050, hop=512):
     # Synthesize the MIDI using the supplied sf2 path
     midi_audio = midi_no_drums.fluidsynth(fs=fs, sf2_path=sf2_path)
     # Use the harmonic part of the signal
-    H, P = librosa.decompose.hpss(librosa.stft(midi_audio))
-    midi_audio_harmonic = librosa.istft(H)
+    # H, P = librosa.decompose.hpss(librosa.stft(midi_audio))
+    # midi_audio_harmonic = librosa.istft(H)
     # Compute log frequency spectrogram of audio synthesized from MIDI
-    midi_gram = np.abs(librosa.cqt(y=midi_audio_harmonic,
+    midi_gram = np.abs(librosa.cqt(y=midi_audio,
                                    sr=fs,
                                    hop_length=hop,
                                    fmin=librosa.midi_to_hz(36),
+                                   fmax = librosa.midi_to_hz(96),
                                    bins_per_octave=12,
                                    tuning=0.0))**2
     return midi_gram
 
 # <codecell>
 def midi_to_piano_cqt(midi):
-  piano_roll = midi.get_piano_roll(times = midi.get_beats())
-  pianodb = 10*np.log10(piano_roll + 1e-10)
+  piano_roll = midi.get_piano_roll(times = librosa.frames_to_time(np.arange(midi.get_end_time()*22050/512)))
+  piano_roll = piano_roll + 1e-10
   piano_subset = piano_roll[36:96] #want just C3 to C8 of piano roll
   # TODO: adjust piano roll row info to match frame and hopping
   return piano_subset
@@ -188,15 +189,16 @@ def audio_to_cqt_and_onset_strength(audio, fs=22050, hop=512):
     '''
     # Use harmonic part for gram, percussive part for onsets
     H, P = librosa.decompose.hpss(librosa.stft(audio))
-    audio_harmonic = librosa.istft(H)
+    # audio_harmonic = librosa.istft(H)
     audio_percussive = librosa.istft(P)
     # Compute log-frequency spectrogram of original audio
-    audio_gram = np.abs(librosa.cqt(y=audio_harmonic,
+    audio_gram = np.abs(librosa.cqt(y=audio,
                                     sr=fs,
                                     hop_length=hop,
                                     fmin=librosa.midi_to_hz(36),
                                     fmax = librosa.midi_to_hz(96),
                                     bins_per_octave=12))**2
+
     # Beat track the audio file at 4x the hop rate
     audio_onset_strength = librosa.onset.onset_strength(audio_percussive, hop_length=hop/4, sr=fs)
     return audio_gram, audio_onset_strength

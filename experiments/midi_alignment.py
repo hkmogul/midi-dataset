@@ -29,11 +29,11 @@ if '-p' in sys.argv:
 if '-u' in sys.argv:
   use_mp3_data = True
 if '-i' in sys.argv:
-  interval = -12
+  interval = -24
 # <codecell>
 
 SF2_PATH = '../../Performer Synchronization Measure/SGM-V2.01.sf2'
-OUTPUT_PATH = 'midi-aligned-additive-dpmod'
+OUTPUT_PATH = 'midi-aligned-additive-dpmod-piano'
 BASE_PATH = '../data/sanity'
 if not os.path.exists(os.path.join(BASE_PATH, OUTPUT_PATH)):
     os.makedirs(os.path.join(BASE_PATH, OUTPUT_PATH))
@@ -120,11 +120,11 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     # Generate synthetic MIDI CQT
     if piano:
       midi_gram = align_midi.midi_to_piano_cqt(m)
-      log_gram = librosa.logamplitude(midi_gram, ref_power=midi_gram.max())
+      # log_gram = librosa.logamplitude(midi_gram, ref_power=midi_gram.max())
       # Normalize columns and return
-      midi_gram= librosa.util.normalize(log_gram, axis=0)
-      # midi_beats, bpm = align_midi.midi_beat_track(m)
-      # midi_gram = align_midi.post_process_cqt(midi_gram, midi_beats)
+      # midi_gram= librosa.util.normalize(log_gram, axis=0)
+      midi_beats, bpm = align_midi.midi_beat_track(m)
+      midi_gram = align_midi.post_process_cqt(midi_gram, midi_beats)
     else:
       midi_gram = align_midi.midi_to_cqt(m, SF2_PATH)
       # Get beats
@@ -241,7 +241,9 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
 # Parallelization!
 mp3_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'audio', '*.mp3')))
 midi_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'midi', '*.mid')))
-joblib.Parallel(n_jobs=7)(joblib.delayed(align_one_file)(mp3_filename,
-                                                         midi_filename,
-                                                         midi_filename.replace('midi', OUTPUT_PATH))
-                                                         for mp3_filename, midi_filename in zip(mp3_glob, midi_glob))
+# joblib.Parallel(n_jobs=7)(joblib.delayed(align_one_file)(mp3_filename,
+#                                                          midi_filename,
+#                                                          midi_filename.replace('midi', OUTPUT_PATH))
+#                                                          for mp3_filename, midi_filename in zip(mp3_glob, midi_glob))
+for mp3_filename, midi_filename in zip(mp3_glob, midi_glob):
+  align_one_file(mp3_filename, midi_filename, midi_filename.replace('midi', OUTPUT_PATH))
