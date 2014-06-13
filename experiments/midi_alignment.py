@@ -20,12 +20,22 @@ import scipy.io
 
 piano = False
 write_mp3 = False
-if len(sys.argv) > 1:
-  if sys.argv[1] == '-w':
-    write_mp3 = True
-if len(sys.argv) > 2:
-  if sys.argv[2] == '-p':
-    piano = True
+use_mp3_data = False# choice of using preexisting data
+# if len(sys.argv) > 1:
+#   if sys.argv[1] == '-w':
+#     write_mp3 = True
+# if len(sys.argv) > 2:
+#   if sys.argv[2] == '-p':
+#     piano = True
+# if len(sys.argv) > 3:
+#   if sys.argv[3] == '-u':
+#     use_mp3_data = True
+if '-w' in sys.argv:
+  write_mp3 = True
+if '-p' in sys.argv:
+  piano = True
+if '-u' in sys.argv:
+  use_mp3_data = True
 # <codecell>
 
 SF2_PATH = '../../Performer Synchronization Measure/SGM-V2.01.sf2'
@@ -74,11 +84,17 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     print "Aligning {}".format(os.path.split(midi_filename)[1])
 
     # Cache audio CQT and onset strength
-    print "Creating CQT and onset strength signal for {}".format(os.path.split(mp3_filename)[1])
+
     # Don't need to load in audio multiple times
     audio, fs = librosa.load(mp3_filename)
-    # Create audio CQT, which is just frame-wise power, and onset strength
-    audio_gram, audio_onset_strength = align_midi.audio_to_cqt_and_onset_strength(audio, fs=fs)
+    if use_mp3_data:
+      print "Using pre-existing CQT and onset strength data for {}".format(os.path.split(mp3_filename)[1])
+      # Create audio CQT, which is just frame-wise power, and onset strength
+      audio_gram = np.load(to_cqt_npy(mp3_filename))
+      audio_onset_strength = np.load(to_onset_strength_npy(mp3_filename))
+    else:
+      print "Creating CQT and onset strength signal for {}".format(os.path.split(mp3_filename)[1])
+      audio_gram, audio_onset_strength = align_midi.audio_to_cqt_and_onset_strength(audio, fs=fs)
 
 
     print "Creating CQT for {}".format(os.path.split(midi_filename)[1])
@@ -88,7 +104,8 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
       log_gram = librosa.logamplitude(midi_gram, ref_power=midi_gram.max())
       # Normalize columns and return
       midi_gram= librosa.util.normalize(log_gram, axis=0)
-      midi_gram = midi_gram + 1
+      # midi_beats, bpm = align_midi.midi_beat_track(m)
+      # midi_gram = align_midi.post_process_cqt(midi_gram, midi_beats)
     else:
       midi_gram = align_midi.midi_to_cqt(m, SF2_PATH)
       # Get beats
