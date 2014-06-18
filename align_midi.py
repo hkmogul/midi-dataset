@@ -54,6 +54,8 @@ def dpmod(M, gully=.95, pen=None):
     # Set penality = median(M) if none was provided
     if pen is None:
         pen = np.percentile(M, 90)
+        # pen = np.amin(M)
+
     pen = float(pen)
 
     # Compute path cost matrix
@@ -161,17 +163,14 @@ def midi_to_cqt(midi, sf2_path=None, fs=22050, hop=512):
                                    sr=fs,
                                    hop_length=hop,
                                    fmin=librosa.midi_to_hz(36),
-                                   fmax = librosa.midi_to_hz(96),
-                                   bins_per_octave=12,
+                                   n_bins = 60,
                                    tuning=0.0))**2
     return midi_gram
 
 # <codecell>
 def midi_to_piano_cqt(midi):
   piano_roll = midi.get_piano_roll(times = librosa.frames_to_time(np.arange(midi.get_end_time()*22050/512)))
-  piano_roll = piano_roll + 1e-10
-  piano_subset = piano_roll[36:96] #want just C3 to C8 of piano roll
-  # TODO: adjust piano roll row info to match frame and hopping
+  piano_subset = piano_roll[36:96]+1e-10 #want just C3 to C8 of piano roll
   return piano_subset
 
 def audio_to_cqt_and_onset_strength(audio, fs=22050, hop=512):
@@ -189,15 +188,14 @@ def audio_to_cqt_and_onset_strength(audio, fs=22050, hop=512):
     '''
     # Use harmonic part for gram, percussive part for onsets
     H, P = librosa.decompose.hpss(librosa.stft(audio))
-    # audio_harmonic = librosa.istft(H)
+    audio_harmonic = librosa.istft(H)
     audio_percussive = librosa.istft(P)
     # Compute log-frequency spectrogram of original audio
-    audio_gram = np.abs(librosa.cqt(y=audio,
+    audio_gram = np.abs(librosa.cqt(y=audio_harmonic,
                                     sr=fs,
                                     hop_length=hop,
                                     fmin=librosa.midi_to_hz(36),
-                                    fmax = librosa.midi_to_hz(96),
-                                    bins_per_octave=12))**2
+                                    n_bins = 60))**2
 
     # Beat track the audio file at 4x the hop rate
     audio_onset_strength = librosa.onset.onset_strength(audio_percussive, hop_length=hop/4, sr=fs)
