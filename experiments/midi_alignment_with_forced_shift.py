@@ -17,6 +17,7 @@ import sys
 sys.path.append('../')
 import align_midi
 import scipy.io
+import csv
 
 # <codecell>
 #set interval to command line argument
@@ -233,9 +234,20 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
 # <codecell>
 
 # Parallelization!
-mp3_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'audio', '*.mp3')))
-midi_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'midi', '*.mid')))
-joblib.Parallel(n_jobs=7)(joblib.delayed(align_one_file)(mp3_filename,
-                                                         midi_filename,
-                                                         midi_filename.replace('midi', OUTPUT_PATH))
-                                                         for mp3_filename, midi_filename in zip(mp3_glob, midi_glob))
+# mp3_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'audio', '*.mp3')))
+# midi_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'midi', '*.mid')))
+# joblib.Parallel(n_jobs=7)(joblib.delayed(align_one_file)(mp3_filename,
+#                                                          midi_filename,
+#                                                          midi_filename.replace('midi', OUTPUT_PATH))
+#                                                          for mp3_filename, midi_filename in zip(mp3_glob, midi_glob))
+path_to_txt = '../data/cal500_txt/Clean_MIDIs-path_to_cal500_path.txt'
+path_file = open(path_to_txt, 'rb')
+filereader = csv.reader(path_file, delimiter='\t')
+amt = 0
+# for row in filereader:
+#   amt +=1
+# print "Processing {} MIDI files.".format(amt)
+for row in filereader:
+  midi_filename = BASE_PATH+'/Clean_MIDIs/'+row[0]
+  mp3_filename =  BASE_PATH+ '/audio/'+row[1]
+  align_one_file(mp3_filename, midi_filename, midi_filename.replace('Clean_MIDIs', OUTPUT_PATH),interval = interval)
