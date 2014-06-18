@@ -204,7 +204,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     # Beat-align and log/normalize the audio CQT
     audio_gram = align_midi.post_process_cqt(audio_gram, audio_beats)
 
-    score_list = np.zeros(13)
+    # score_list = np.zeros(13)
     #dictionary of data to choose from when finding min for plotting
     # dict = {}
     # for interval in range(-6,7,1):
