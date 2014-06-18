@@ -160,25 +160,28 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     # Beat-align and log/normalize the audio CQT
     audio_gram = align_midi.post_process_cqt(audio_gram, audio_beats)
 
-    score_list = np.zeros(13)
-    #dictionary of data to choose from when finding min for plotting
-    dict = {}
-    for interval in range(-6,7,1):
-      m_gram = shift_cqt(midi_gram, interval)
-      # Get similarity matrix
-      similarity_matrix = scipy.spatial.distance.cdist(m_gram.T, audio_gram.T, metric='cosine')
-      # Get best path through matrix
-      p, q, score = align_midi.dpmod(similarity_matrix)
-      score_list[interval+6] = score
-      dict['p'+str(interval)] = p
-      dict['q'+str(interval)] = q
-      dict['sim_mat'+str(interval)] = similarity_matrix
 
-    min_index = np.argmin(score_list)
-    interval = min_index -6
-    p = dict['p'+str(interval)]
-    q = dict['q'+str(interval)]
-    similarity_matrix = dict['sim_mat'+str(interval)]
+
+    similarity_matrix = scipy.spatial.distance.cdist(midi_gram.T, audio_gram.T, metric='cosine')
+    p, q, score = align_midi.dpmod(similarity_matrix)
+
+    # score_list = np.zeros(13)
+    # #dictionary of data to choose from when finding min for plotting
+    # dict = {}
+    # for interval in range(-6,7,1):
+    #   m_gram = shift_cqt(midi_gram, interval)
+    #   # Get similarity matrix
+    #   # Get best path through matrix
+    #   score_list[interval+6] = score
+    #   dict['p'+str(interval)] = p
+    #   dict['q'+str(interval)] = q
+    #   dict['sim_mat'+str(interval)] = similarity_matrix
+    #
+    # min_index = np.argmin(score_list)
+    # interval = min_index -6
+    # p = dict['p'+str(interval)]
+    # q = dict['q'+str(interval)]
+    # similarity_matrix = dict['sim_mat'+str(interval)]
 
 
     # Plot log-fs grams
@@ -206,7 +209,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     # Plot distance at each point of the lowst-cost path
     ax = plt.subplot2grid((4, 3), (2, 0), rowspan=2)
     plt.plot([similarity_matrix[p_v, q_v] for p_v, q_v in zip(p, q)])
-    plt.title('Distance at each point on lowest-cost path- Minimum Harmonic Interval: {} Half Steps'.format(interval))
+    plt.title('Distance at each point on lowest-cost path')
 
     # Plot similarity matrix and best path through it
     ax = plt.subplot2grid((4, 3), (2, 1), rowspan=2)
