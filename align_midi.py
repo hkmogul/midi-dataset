@@ -173,6 +173,26 @@ def midi_to_piano_cqt(midi):
   piano_subset = piano_roll[36:96]+1e-10 #want just C3 to C8 of piano roll
   return piano_subset
 
+def shift_cqt(cqt, interval):
+    ''' Shifts a cqt matrix by the given interval '''
+
+    # If we are shifting the cqt down, we need to replace the first rows with
+    # zero vectors.  If we are shifting it upwards, we need to replace the last
+    # rows with zero vectors.
+    # roll down axis 0 by interval amount
+    if interval != 0:
+      min_value = np.amin(cqt)
+      fill_array = min_value*np.ones((abs(interval), cqt.shape[1]))
+      if interval > 0:
+        cqt_slice = cqt[0:(cqt.shape[0]-interval)]
+        new_cqt = np.vstack((fill_array, cqt_slice))
+      else:
+        cqt_slice = cqt[abs(interval):]
+        new_cqt = np.vstack((cqt_slice, fill_array))
+    else:
+        new_cqt = cqt
+    return new_cqt
+
 def audio_to_cqt_and_onset_strength(audio, fs=22050, hop=512):
     '''
     Feature extraction for audio data.
