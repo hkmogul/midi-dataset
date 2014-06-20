@@ -20,11 +20,11 @@ import scipy.io
 import csv
 
 
-OUTPUT_PATH = 'midi-aligned-key-check'
+OUTPUT_PATH = 'key-experiment/attempt_with'
 piano = False
 write_mp3 = False
 use_prev_data = False# choice of using preexisting data
-interval = 0
+initial_interval = 0
 if '-w' in sys.argv:
   write_mp3 = True
 if '-p' in sys.argv:
@@ -33,8 +33,8 @@ if '-p' in sys.argv:
 if '-u' in sys.argv:
   use_prev_data = True
 if '-i' in sys.argv:
-  interval = 4
-  OUTPUT_PATH = OUTPUT_PATH+str(interval)
+  initial_interval = 12
+  OUTPUT_PATH = OUTPUT_PATH+'_'+str(initial_interval)
 # <codecell>
 
 SF2_PATH = '../../Performer Synchronization Measure/SGM-V2.01.sf2'
@@ -43,31 +43,7 @@ if not os.path.exists(os.path.join(BASE_PATH, OUTPUT_PATH)):
     os.makedirs(os.path.join(BASE_PATH, OUTPUT_PATH))
 
 # <codecell>
-def shift_cqt(cqt, interval):
-  ''' Shifts a cqt matrix by the given interval '''
-  new_cqt = np.zeros(cqt.shape)
-  min_value = np.amin(cqt)
-  end_index = cqt.shape[0]-1
-  fill_array = min_value*np.ones((abs(interval)+1, cqt.shape[1]))
-  # If we are shifting the cqt down, we need to replace the first rows with
-  # zero vectors.  If we are shifting it upwards, we need to replace the last
-  # rows with zero vectors.
-  # roll down axis 0 by interval amount
-  if interval != 0:
-    cqt_roll = np.roll(cqt, interval, axis = 0)
-    if interval < 0:
-      #take slice of lower rows
-      cqt_slice = cqt_roll[0:end_index-abs(interval)]
-      #stack with fill_array
-      new_cqt = np.vstack((cqt_slice, fill_array))
-    elif interval> 0:
-      #take slice of upper rows
-      cqt_slice = cqt_roll[0:(end_index-interval)]
-      #stack with fill_array
-      new_cqt = np.vstack((fill_array,cqt_slice))
-  else:
-    new_cqt = cqt
-  return new_cqt
+
 
 # Utility functions for converting between filenames
 def to_cqt_npy(filename):
@@ -105,7 +81,7 @@ def make_midi_cqt(midi_filename, piano, midi_info = None):
     return midi_gram
 
 
-def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_diagnostics=True, interval=0):
+def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_diagnostics=True, initial_interval=0):
     '''
     Helper function for aligning a MIDI file to an audio file.
 
@@ -159,7 +135,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
       np.save(to_cqt_npy(mp3_filename), audio_gram)
       np.save(to_onset_strength_npy(mp3_filename), audio_onset_strength)
 
-    if use_prev_data:
+    if use_prev_data and initial_interval == 0:
       if piano:
         if os.path.exists(to_piano_cqt_npy(midi_filename)):
           midi_gram = np.load(to_piano_cqt_npy(midi_filename))
@@ -175,35 +151,28 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     else:
       print "Creating CQT for {}".format(os.path.split(midi_filename)[1])
       # Generate synthetic MIDI CQT
-      midi_gram = make_midi_cqt(midi_filename, piano, m)
-      # if piano:
-      #
-      #   midi_gram = align_midi.midi_to_piano_cqt(m)
-      #   midi_beats, bpm = align_midi.midi_beat_track(m)
-      #   midi_gram = align_midi.post_process_cqt(midi_gram, midi_beats)
-      #   piano_cqt_path = os.path.splitext(midi_filename)[0]+'-piano.npy'
-      #   np.save(to_piano_cqt_npy(midi_filename), midi_gram)
-      # else:
-      #   midi_gram = align_midi.midi_to_cqt(m, SF2_PATH)
-      #   # Get beats
-      #   midi_beats, bpm = align_midi.midi_beat_track(m)
-      #   # Beat synchronize and normalize
-      #   midi_gram = align_midi.post_process_cqt(midi_gram, midi_beats)
-      #   np.save(to_cqt_npy(midi_filename),midi_gram)
-    if interval != 0:
-      midi_gram = shift_cqt(midi_gram, interval)
-    # Load in CQTs
+      if initial_interval == 0:
+        midi_gram = make_midi_cqt(midi_filename, piano, m)
+      else:
+        print "shifting midi at instrument level by {}".format(str(initial_interval))
+        for instrument in m.instruments:
+          # Check whether the instrument is a drum track
+          if not instrument.is_drum:
+          # Iterate over note events for this instrument
+            for note in instrument.events:
+              # Shift them up by 4 semitones
+              note.pitch += initial_interval
+        midi_gram = make_midi_cqt(midi_filename, piano, m)
 
-    # midi_gram = align_midi.midi_to_piano_cqt(m)
-    # and audio onset strength signal
-    # audio_onset_strength = np.load(to_onset_strength_npy(mp3_filename))
+
 
     # Compute beats
     midi_beats, bpm = align_midi.midi_beat_track(m)
     audio_beats = librosa.beat.beat_track(onsets=audio_onset_strength, hop_length=512/4, bpm=bpm)[1]/4
     # Beat-align and log/normalize the audio CQT
     audio_gram = align_midi.post_process_cqt(audio_gram, audio_beats)
-
+    # what we're going to do to see if it works:
+    #  take a few alignments we know are in key, shift them some amount, see if the checker shifts them back
 
     # new method of checking "in key-ness"- dot product
     audio_net = np.sum(audio_gram, axis = 1)
@@ -214,35 +183,55 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     midi_net = midi_net - np.amin(midi_net)
 
     score_list = np.zeros(13)
+    diff_list = np.zeros(13)
     #dictionary of data to choose from when finding min for plotting
-
+    # dict = {}
+    diagnostic_file = open(os.path.splitext(output_midi_filename)[0]+'-interval_diagnostics.txt','w')
+    diagnostic_file.write('we want minimum interval to be '+str(-1*initial_interval)+'\n')
     for interval in range(-6,7,1):
-      audio_chunk = audio_net
-      midi_shift= np.roll(midi_net, interval)
-      if interval > 0:
-        midi_shift[0:(interval+1)] = 0
-        audio_chunk[0:(interval+1)] = 0
+      a_gram = audio_gram
+      end_index = audio_gram.shape[0]-1
+      m_gram = align_midi.shift_cqt(midi_gram, interval)
 
-      elif interval < 0:
-        midi_shift[(midi_shift.shape[0]+interval):] = 0
-        audio_chunk[(midi_shift.shape[0]+interval):] = 0
+      audio_net = np.sum(a_gram, axis = 1) - np.amin(audio_net)
+      midi_net = np.sum(m_gram, axis = 1) - np.amin(midi_net)
 
-
-      sim = np.dot(midi_shift, audio_chunk)
+      sim = np.dot(midi_net, audio_net)/(np.linalg.norm(midi_net)*np.linalg.norm(audio_net))
+      diff = np.sum((midi_net-audio_net)**2)/(np.linalg.norm(midi_net)*np.linalg.norm(audio_net))
       score_list[interval+6] = sim
+      diff_list[interval+6] = diff
+
+      diagnostic_file.write('Interval: '+str(interval) + '\n')
+      diagnostic_file.write('Cosine-similarity: '+ str(sim) + '  Euclidean Distance: '+str(diff))
+      diagnostic_file.write('\n')
+      diagnostic_file.write('\n')
 
 
-    min_index = np.argmin(score_list)
-    interval = min_index -6
+
+
+    min_index = np.argmax(score_list)
+    print min_index
+    min_diff = np.argmin(diff_list)
+    diff_in = min_diff - 6
+    dot_in = min_index-6
+    interval = dot_in
+    diagnostic_file.write('Minimum Interval via dot: '+str(min_index-6))
+    diagnostic_file.write('Minimum Interval via euclid: '+str(diff_in))
+    if dot_in != interval:
+      diagnostic_file.write(' <-LOOK AT THIS!!!!')
+      print 'LOOOK AT THIS'
+    diagnostic_file.close()
+
     print interval
-    m_gram = shift_cqt(midi_gram, interval)
+    m_gram = align_midi.shift_cqt(midi_gram, interval)
     similarity_matrix = scipy.spatial.distance.cdist(m_gram.T, audio_gram.T, metric='cosine')
+
 
 
     # Plot log-fs grams
     plt.figure(figsize=(36, 24))
     ax = plt.subplot2grid((4, 3), (0, 0), colspan=3)
-    plt.title('MIDI Synthesized')
+    plt.title('MIDI Synthesized- originally shifted by {0}, auto fix by {1}'.format(initial_interval, interval))
     librosa.display.specshow(m_gram,
                              x_axis='frames',
                              y_axis='cqt_note',
@@ -250,7 +239,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
                              fmax=librosa.midi_to_hz(96))
     ax = plt.subplot2grid((4, 3), (1, 0), colspan=3)
     plt.title('Audio data')
-    librosa.display.specshow(audio_gram,
+    librosa.display.specshow(a_gram,
                              x_axis='frames',
                              y_axis='cqt_note',
                              fmin=librosa.midi_to_hz(36),
@@ -335,7 +324,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
 mp3_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'audio', '*.mp3')))
 midi_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'midi', '*.mid')))
 
-path_to_txt = '../data/cal500_txt/Clean_MIDIs-path_to_cal500_path_Chuck.txt'
+path_to_txt = '../data/cal500_txt/Clean_MIDIs-path_to_cal500_key_experiment.txt'
 path_file = open(path_to_txt, 'rb')
 filereader = csv.reader(path_file, delimiter='\t')
 amt = 0
@@ -345,7 +334,7 @@ amt = 0
 for row in filereader:
   midi_filename = BASE_PATH+'/Clean_MIDIs/'+row[0]
   mp3_filename =  BASE_PATH+ '/audio/'+row[1]
-  align_one_file(mp3_filename, midi_filename, midi_filename.replace('Clean_MIDIs', OUTPUT_PATH),interval = interval)
+  align_one_file(mp3_filename, midi_filename, midi_filename.replace('Clean_MIDIs', OUTPUT_PATH),initial_interval = initial_interval)
 
 
 
