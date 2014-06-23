@@ -23,6 +23,7 @@ piano = False
 write_mp3 = False
 use_prev_data = False# choice of using preexisting data
 initial_interval = 12
+use_prev_midi+ False
 if '-w' in sys.argv:
   write_mp3 = True
 if '-p' in sys.argv:
@@ -32,6 +33,8 @@ if '-u' in sys.argv:
   use_prev_data = True
 if '-i' in sys.argv:
   initial_interval += -1
+if '-m' in sys.argv:
+  use_prev_midi = True
 # <codecell>
 OUTPUT_PATH = OUTPUT_PATH+'_'+str(initial_interval)
 
@@ -142,7 +145,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
       np.save(to_cqt_npy(mp3_filename), audio_gram)
       np.save(to_onset_strength_npy(mp3_filename), audio_onset_strength)
 
-    if use_prev_data and initial_interval == 0:
+    if use_prev_midi and initial_interval == 0:
       if piano:
         if os.path.exists(to_piano_cqt_npy(midi_filename)):
           midi_gram = np.load(to_piano_cqt_npy(midi_filename))
