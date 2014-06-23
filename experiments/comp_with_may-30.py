@@ -29,6 +29,7 @@ def vs_filename_to_path(filename):
 def compare_paths(cqt_mat_path, piano_mat_path):
   ''' Checks if alignment paths are the same, returns true if that is the case, false otherwise '''
   nErrors = 0
+  total_possible = 1
   cqt_mat = scipy.io.loadmat(cqt_mat_path)
   p1 = cqt_mat['p']
   p1 = p1[0][:]
@@ -44,25 +45,31 @@ def compare_paths(cqt_mat_path, piano_mat_path):
 
   # first easy check,if the shapes are different no need to iterate through
   if p1.shape[0] != p2.shape[0] or q1.shape[0] != q2.shape[0]:
-    print "Sizes of " + piano_mat_path + " do not match."
+    # print "Sizes of " + piano_mat_path + " do not match."
     nErrors += 1
   # check p vectors
   for a,b in zip(p1, p2):
     if a != b:
       nErrors += 1
+    total_possible+=1
   # check q vectors
   for a,b in zip(q1, q2):
     if a != b:
       nErrors += 1
-  return nErrors
+    total_possible+=1
+  print nErrors
+  print total_possible
+  return float(nErrors)/total_possible
 
 path_to_530 = '../../MIDI_Results_5-30/'
 path_to_csv = '../../CSV_Analysis/5-30-14_Alignment_Results.csv'
-success_file = open('../analytic-files/Matching_Successful_alignments.txt','w')
-diff_file = open('../analytic-files/Differing_Successful_alignments.txt','w')
+success_file = open('../analytic-files/Matching_Successful_alignments.csv','w')
+diff_file = open('../analytic-files/Differing_Successful_alignments.csv','w')
 piano_base_path = '../data/cal500_txt/midi-aligned-additive-dpmod-piano/'
-success_fail = open('../analytic-files/Matching_Failing_alignments.txt','w')
-diff_fail = open('../analytic-files/Differing_Failing_alignments.txt','w')
+success_fail = open('../analytic-files/Matching_Failing_alignments.csv','w')
+diff_fail = open('../analytic-files/Differing_Failing_alignments.csv','w')
+
+amt_match = 0
 with open(path_to_csv) as csv_file:
   filereader = csv.reader(csv_file)
   next(filereader, None)
@@ -72,19 +79,23 @@ with open(path_to_csv) as csv_file:
     mat_path = path_to_530+os.path.splitext(row[0])[0]+'.mat.mat'
     piano_mat_path = piano_base_path+vs_filename_to_path(row[0])
     nErrors = compare_paths(mat_path, piano_mat_path)
+    print os.path.basename(piano_mat_path) +" "+ str(nErrors)
     if int(row[2]) == 1:
       print 'analysing successful file'
       if nErrors == 0:
+        amt_match += 1
         print piano_mat_path + " matches CQT path, will write down"
-        success_file.write(piano_mat_path + ',0 \n')
+        success_file.write(piano_mat_path + '\t 0 \n')
       else:
-        diff_file.write(piano_mat_path+ ','+ str(nErrors)+'\n')
+        diff_file.write(piano_mat_path+ '\t'+ str(nErrors)+'\n')
     else:
       if nErrors == 0:
-        success_fail.write(piano_mat_path + ',0 \n')
+        amt_match += 1
+        success_fail.write(piano_mat_path + '\t 0 \n')
       else:
-        diff_fail.write(piano_mat_path+ ','+str(nErrors)+'\n')
+        diff_fail.write(piano_mat_path+ '\t'+str(nErrors)+'\n')
 success_file.close()
 success_fail.close()
 diff_file.close()
 diff_fail.close()
+print amt_match
