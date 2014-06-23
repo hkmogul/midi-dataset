@@ -23,8 +23,59 @@ def vs_filename_to_path(filename):
       loc = i+4
       break
   # get list of artist and file
-  file_base = filename[i:].split('_')
-  return ext_to_mat(file_base[0]+'/'+file_base[1]
+  file_base = filename[loc:].split('_')
+  return ext_to_mat(file_base[0]+'/'+file_base[1])
 
-def compare_paths(cqt_mat, piano_mat):
-  p1,q1
+def compare_paths(cqt_mat_path, piano_mat_path):
+  ''' Checks if alignment paths are the same, returns true if that is the case, false otherwise '''
+  nErrors = 0
+  cqt_mat = scipy.io.loadmat(cqt_mat_path)
+  p1 = cqt_mat['p']
+  q1 = cqt_mat['q']
+  piano_mat = scipy.io.loadmat(piano_mat_path)
+  p2 = piano_mat['p']
+  q2 = piano_mat['q']
+  # first easy check,if the shapes are different no need to iterate through
+  if p1.shape[1] != p2.shape[1] or q1.shape[1] != q2.shape[1]:
+    print "Sizes of " + piano_mat_path + " do not match."
+    nErrors += 1
+  # check p vectors
+  for a,b in zip(p1, p2):
+    if a != b:
+      nErrors += 1
+  # check q vectors
+  for a,b in zip(q1, q2):
+    if a != b:
+      nErrors += 1
+  return nErrors
+
+path_to_530 = '../../MIDI_Results_5-30/'
+path_to_csv = '../../CSV_Analysis/5-30-14_Alignment_Results.csv'
+success_file = open('../analytic-files/Matching_Successful_alignments.txt','w')
+diff_file = open('../analytic-files/Differing_Successful_alignments.txt','w')
+
+success_fail = open('../analytic-files/Matching_Failing_alignments.txt','w')
+diff_fail = open('../analytic-files/Differing_Failing_alignments.txt','w')
+with open(path_to_csv) as csv_file:
+  filereader = csv.reader(csv_file)
+  for row in filereader:
+    # if this was a successful file, get the .mat file of that one and
+
+    mat_path = path_to_530+os.path.splitext(row[0])[0]+'.mat'
+    piano_mat_path = vs_filename_to_path(row[0])
+    nErrors = compare_paths(mat_path, piano_mat_path)
+    if row[2] == 1:
+      if nErrors == 0:
+        print piano_mat_path + " matches CQT path, will write down"
+        success_file.write(piano_mat_path + ',0 \n')
+      else:
+        diff_file.write(piano_mat_path+ ','+ str(nErrors)+'\n')
+    else:
+      if nErrors == 0:
+        success_fail.write(piano_mat_path + ',0 \n')
+      else:
+        diff_fail.write(piano_mat_path+ ','+str(nErrors),+'\n')
+success_file.close()
+success_fail.close()
+diff_file.close()
+diff_fail.close()
