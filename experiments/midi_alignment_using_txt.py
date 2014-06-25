@@ -21,11 +21,12 @@ import csv
 
 
 # OUTPUT_PATH = 'midi-aligned-additive-dpmod'
-OUTPUT_PATH = 'midi-aligned-key-check'
+OUTPUT_PATH = 'midi-aligned-key-check-44-percentile'
 
 piano = False
 write_mp3 = False
 use_prev_data = False# choice of using preexisting data
+make_midi_info = False # make new midi data (in case you think it may have been altered)
 interval = 0
 if '-w' in sys.argv:
   write_mp3 = True
@@ -37,6 +38,8 @@ if '-u' in sys.argv:
 if '-i' in sys.argv:
   interval = -2
   OUTPUT_PATH = OUTPUT_PATH+str(interval)
+if '-m' in sys.argv:
+  make_midi_info = True
 # <codecell>
 
 SF2_PATH = '../../Performer Synchronization Measure/SGM-V2.01.sf2'
@@ -159,7 +162,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
       np.save(to_cqt_npy(mp3_filename), audio_gram)
       np.save(to_onset_strength_npy(mp3_filename), audio_onset_strength)
 
-    if use_prev_data:
+    if use_prev_data and not make_midi_info:
       if piano:
         if os.path.exists(to_piano_cqt_npy(midi_filename)):
           midi_gram = np.load(to_piano_cqt_npy(midi_filename))
@@ -176,20 +179,6 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
       print "Creating CQT for {}".format(os.path.split(midi_filename)[1])
       # Generate synthetic MIDI CQT
       midi_gram = make_midi_cqt(midi_filename, piano, m)
-      # if piano:
-      #
-      #   midi_gram = align_midi.midi_to_piano_cqt(m)
-      #   midi_beats, bpm = align_midi.midi_beat_track(m)
-      #   midi_gram = align_midi.post_process_cqt(midi_gram, midi_beats)
-      #   piano_cqt_path = os.path.splitext(midi_filename)[0]+'-piano.npy'
-      #   np.save(to_piano_cqt_npy(midi_filename), midi_gram)
-      # else:
-      #   midi_gram = align_midi.midi_to_cqt(m, SF2_PATH)
-      #   # Get beats
-      #   midi_beats, bpm = align_midi.midi_beat_track(m)
-      #   # Beat synchronize and normalize
-      #   midi_gram = align_midi.post_process_cqt(midi_gram, midi_beats)
-      #   np.save(to_cqt_npy(midi_filename),midi_gram)
     if interval != 0:
       midi_gram = shift_cqt(midi_gram, interval)
     # Load in CQTs
@@ -203,27 +192,6 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     audio_beats = librosa.beat.beat_track(onsets=audio_onset_strength, hop_length=512/4, bpm=bpm)[1]/4
     # Beat-align and log/normalize the audio CQT
     audio_gram = align_midi.post_process_cqt(audio_gram, audio_beats)
-
-    # score_list = np.zeros(13)
-    #dictionary of data to choose from when finding min for plotting
-    # dict = {}
-    # for interval in range(-6,7,1):
-    #   m_gram = shift_cqt(midi_gram, interval)
-    #   # Get similarity matrix
-    #   similarity_matrix = scipy.spatial.distance.cdist(m_gram.T, audio_gram.T, metric='cosine')
-    #   # Get best path through matrix
-    #   p, q, score = align_midi.dpmod(similarity_matrix)
-    #   score_list[interval+6] = score
-    #   dict['p'+str(interval)] = p
-    #   dict['q'+str(interval)] = q
-    #   dict['sim_mat'+str(interval)] = similarity_matrix
-    #
-    # min_index = np.argmin(score_list)
-    # interval = min_index -6
-    # p = dict['p'+str(interval)]
-    # q = dict['q'+str(interval)]
-    # similarity_matrix = dict['sim_mat'+str(interval)]
-
 
     # Plot log-fs grams
     plt.figure(figsize=(36, 24))
@@ -245,7 +213,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     # Get similarity matrix
     similarity_matrix = scipy.spatial.distance.cdist(midi_gram.T, audio_gram.T, metric='cosine')
     # Get best path through matrix
-    p, q, score = align_midi.dpmod(similarity_matrix)
+    p, q, score = align_midi.dpmod(similarity_matrix,pen = np.percentile(similarity_matrix, 44))
 
     # Plot distance at each point of the lowst-cost path
     ax = plt.subplot2grid((4, 3), (2, 0), rowspan=2)
@@ -324,7 +292,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
 mp3_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'audio', '*.mp3')))
 midi_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'midi', '*.mid')))
 
-path_to_txt = '../data/cal500_txt/Clean_MIDIs-path_to_cal500_path_Chuck.txt'
+path_to_txt = '../data/cal500_txt/Clean_MIDIs-path_to_cal500_path.txt'
 path_file = open(path_to_txt, 'rb')
 filereader = csv.reader(path_file, delimiter='\t')
 amt = 0
