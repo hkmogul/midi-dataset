@@ -54,7 +54,6 @@ def dpmod(M, gully=.95, pen=None):
     # Set penality = median(M) if none was provided
     if pen is None:
         pen = np.percentile(M, 90)
-        # pen = np.amin(M)
 
     pen = float(pen)
 
