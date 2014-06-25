@@ -47,27 +47,48 @@ def compare_paths(cqt_mat_path, piano_mat_path):
   if p1.shape[0] != p2.shape[0] or q1.shape[0] != q2.shape[0]:
     # print "Sizes of " + piano_mat_path + " do not match."
     nErrors += 1
-  # check p vectors
-  for a,b in zip(p1, p2):
-    if a != b:
+  # # check p vectors
+  # for a,b in zip(p1, p2):
+  #   if a != b:
+  #     nErrors += 1
+  #   total_possible+=1
+  # # check q vectors
+  # for a,b in zip(q1, q2):
+  #   if a != b:
+  #     nErrors += 1
+  #   total_possible+=1
+
+  # turn vectors into p,q tuples
+  pq1 = np.rot90(np.vstack((p1,q1)),3)
+
+  pq2 = np.rot90(np.vstack((p2,q2)),3)
+  cqt_list= pq1.tolist()
+  piano_list = pq2.tolist()
+  for pair in cqt_list:
+    if pair not in piano_list:
       nErrors += 1
-    total_possible+=1
-  # check q vectors
-  for a,b in zip(q1, q2):
-    if a != b:
-      nErrors += 1
-    total_possible+=1
+    total_possible += 1
+
+  # pq1_tuple = tuple(map(tuple, pq1))
+  # pq2_tuple = tuple(map(tuple,pq2))
+  # check if #2 has the tuples of #1
+  # for t in pq1_tuple:
+  #   if t not in pq2_tuple:
+  #     nErrors += 1
+  #   total_possible += 1
   print nErrors
   print total_possible
   return float(nErrors)/total_possible
 
+
+piano_base_path = '../data/cal500_txt/midi-aligned-key-check-44-percentile-piano/'
 path_to_530 = '../../MIDI_Results_5-30/'
 path_to_csv = '../../CSV_Analysis/5-30-14_Alignment_Results.csv'
-success_file = open('../analytic-files/Matching_Successful_alignments.csv','w')
-diff_file = open('../analytic-files/Differing_Successful_alignments.csv','w')
-piano_base_path = '../data/cal500_txt/midi-aligned-additive-dpmod-piano/'
-success_fail = open('../analytic-files/Matching_Failing_alignments.csv','w')
-diff_fail = open('../analytic-files/Differing_Failing_alignments.csv','w')
+
+success_file = open('../analytic-files/Matching_Successful_alignments-44.csv','w')
+diff_file = open('../analytic-files/Differing_Successful_alignments-44.csv','w')
+success_fail = open('../analytic-files/Matching_Failing_alignments-44.csv','w')
+diff_fail = open('../analytic-files/Differing_Failing_alignments-44.csv','w')
 
 amt_match = 0
 with open(path_to_csv) as csv_file:
