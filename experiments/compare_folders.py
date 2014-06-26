@@ -124,15 +124,9 @@ def compare_paths(cqt_mat_path, piano_mat_path):
       nErrors += 1
     total_possible += 1
 
-  # pq1_tuple = tuple(map(tuple, pq1))
-  # pq2_tuple = tuple(map(tuple,pq2))
-  # check if #2 has the tuples of #1
-  # for t in pq1_tuple:
-  #   if t not in pq2_tuple:
-  #     nErrors += 1
-  #   total_possible += 1
-  print nErrors
-  print total_possible
+
+  # print nErrors
+  # print total_possible
   return float(nErrors)/total_possible
 
 
@@ -150,10 +144,9 @@ else:
   OUTPUT_PATH = '../analytic-files/'+path_1+'-vs-'+path_2
   if not os.path.exists(OUTPUT_PATH):
     os.makedirs(OUTPUT_PATH)
-  success_file = open(OUTPUT_PATH+'/Matching_Successful_alignments.csv','w')
-  diff_file = open(OUTPUT_PATH+'/Differing_Successful_alignments.csv','w')
-  success_fail = open(OUTPUT_PATH+'/Matching_Failing_alignments.csv','w')
-  diff_fail = open(OUTPUT_PATH+'/Differing_Failing_alignments.csv','w')
+  success_file = open(OUTPUT_PATH+'/Matching_alignments.csv','w')
+  diff_file = open(OUTPUT_PATH+'/Differing_alignments.csv','w')
+
 
   amt_match = 0
   # get all .mat filenames in common (error check for those of different filenames)
@@ -167,11 +160,17 @@ else:
   else:
     for mat_file in glob_1:
       if mat_file.replace(path_1, path_2) in glob_2:
-        files_to_compare.append(os.path.basename(mat_file))
+        print mat_file.replace(base_path+path_1,'')
+        files_to_compare.append(mat_file.replace(base_path+path_1,''))
   print files_to_compare
 
   for file in files_to_compare:
-
+    error_rate = compare_paths(base_path+path_1+'/'+file, base_path+path_1+'/'+file)
+    print file +" {} error_rate".format(error_rate)
+    if error_rate == 0:
+      success_file.write(file+ '\t 0 \n')
+    else:
+      diff_file.write(file+'\t'+str(error_rate)+'\n')
   # other solution: set theory- make a set of whichever is shorter
   # if len(glob_1) > len(glob_2):
   #   temp_glob = glob_1.replace(path_1,path_2)
@@ -203,7 +202,5 @@ else:
 #       else:
 #         diff_fail.write(piano_mat_path+ '\t'+str(nErrors)+'\n')
 success_file.close()
-success_fail.close()
 diff_file.close()
-diff_fail.close()
 print amt_match
