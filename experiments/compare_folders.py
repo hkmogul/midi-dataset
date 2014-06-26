@@ -149,6 +149,7 @@ else:
 
 
   amt_match = 0
+  amt_diff = 0
   # get all .mat filenames in common (error check for those of different filenames)
   glob_1 = glob.glob(base_path+path_1+'/*/*.mat')
   glob_2 = glob.glob(base_path+path_2+'/*/*.mat')
@@ -156,20 +157,20 @@ else:
   if len(glob_2) <= len(glob_1):
     for mat_file in glob_2:
       if mat_file.replace(path_2, path_1) in glob_1:
-        files_to_compare.append(os.path.basename(mat_file))
+        files_to_compare.append(mat_file.replace(base_path+path_2,''))
   else:
     for mat_file in glob_1:
       if mat_file.replace(path_1, path_2) in glob_2:
-        print mat_file.replace(base_path+path_1,'')
         files_to_compare.append(mat_file.replace(base_path+path_1,''))
-  print files_to_compare
 
   for file in files_to_compare:
-    error_rate = compare_paths(base_path+path_1+'/'+file, base_path+path_1+'/'+file)
+    error_rate = compare_paths(base_path+path_1+'/'+file, base_path+path_2+'/'+file)
     print file +" {} error_rate".format(error_rate)
     if error_rate == 0:
+      amt_match += 1
       success_file.write(file+ '\t 0 \n')
     else:
+      amt_diff += 1
       diff_file.write(file+'\t'+str(error_rate)+'\n')
   # other solution: set theory- make a set of whichever is shorter
   # if len(glob_1) > len(glob_2):
@@ -203,4 +204,5 @@ else:
 #         diff_fail.write(piano_mat_path+ '\t'+str(nErrors)+'\n')
 success_file.close()
 diff_file.close()
-print amt_match
+print "Total # of files that match paths: {}".format(amt_match)
+print "Total # of files that differ: {}".format(amt_diff)
