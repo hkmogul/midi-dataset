@@ -11,7 +11,7 @@ import numba
 # <codecell>
 
 @numba.jit
-def dpcore(M, pen):
+def dpcore(M, pen, experimental = False):
     '''
     Helper function for populating path cost and traceback matrices
     '''
@@ -19,6 +19,9 @@ def dpcore(M, pen):
     D = np.copy(M, order='C')
     # Store the traceback
     phi = np.zeros(D.shape)
+    changed_yet = False
+    if experimental:
+      pen = float(np.amax(M))
     # At each loop iteration, we are computing lowest cost to D[i + 1, j + 1]
     for i in xrange(D.shape[0] - 1):
         for j in xrange(D.shape[1] - 1):
@@ -34,11 +37,15 @@ def dpcore(M, pen):
             elif D[i + 1, j] <= D[i, j + 1] and D[i + 1, j] + pen <= D[i, j]:
                 phi[i + 1, j + 1] = 2
                 D[i + 1, j + 1] += D[i + 1, j] + pen
+            if not changed_yet:
+              if float(i)/D.shape[1] >= .20: #if we are at least 10% through iteration, lower penalty again
+                pen = float(np.percentile(M,90))
+              changed_yet = True
     return D, phi
 
 # <codecell>
 
-def dpmod(M, gully=.95, pen=None):
+def dpmod(M, gully=.95, pen=None, experimental= False):
     '''
     Use dynamic programming to find a min-cost path through matrix M.
 
@@ -58,7 +65,7 @@ def dpmod(M, gully=.95, pen=None):
     pen = float(pen)
 
     # Compute path cost matrix
-    D, phi = dpcore(M, pen)
+    D, phi = dpcore(M, pen,experimental)
 
     # Traceback from lowest-cost point on bottom or right edge
     gully = int(gully*min(D.shape[0], D.shape[1]))
