@@ -21,7 +21,7 @@ import csv
 
 
 # OUTPUT_PATH = 'midi-aligned-additive-dpmod'
-OUTPUT_PATH = 'midi-aligned-jump-mod-max'
+OUTPUT_PATH = 'align_penalty_change_exp-5-max-j'
 
 piano = False
 write_mp3 = False
@@ -230,7 +230,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     # Get similarity matrix
     similarity_matrix = scipy.spatial.distance.cdist(midi_gram.T, audio_gram.T, metric='cosine')
     # Get best path through matrix
-    p, q, score = align_midi.dpmod(similarity_matrix,pen = np.amax(similarity_matrix))
+    p, q, score = align_midi.dpmod(similarity_matrix,pen = np.amax(similarity_matrix), experimental = True)
 
     # Plot distance at each point of the lowst-cost path
     ax = plt.subplot2grid((4, 3), (2, 0), rowspan=2)
