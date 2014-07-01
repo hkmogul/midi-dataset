@@ -21,18 +21,23 @@ import csv
 
 
 # OUTPUT_PATH = 'midi-aligned-additive-dpmod'
-OUTPUT_PATH = 'midi-aligned-key-check-44-percentile'
+OUTPUT_PATH = 'midi-alignment-exp'
 
 piano = False
 write_mp3 = False
 use_prev_data = False# choice of using preexisting data
 make_midi_info = False # make new midi data (in case you think it may have been altered)
+chroma = False
 interval = 0
 if '-w' in sys.argv:
   write_mp3 = True
 if '-p' in sys.argv:
   OUTPUT_PATH = OUTPUT_PATH + '-piano'
   piano = True
+elif '-c' in sys.argv:
+  OUTPUT_PATH = OUTPUT_PATH + '-chroma'
+  print "using chroma"
+  chroma = True
 if '-u' in sys.argv:
   use_prev_data = True
 if '-i' in sys.argv:
@@ -43,36 +48,11 @@ if '-m' in sys.argv:
 # <codecell>
 
 SF2_PATH = '../../Performer Synchronization Measure/SGM-V2.01.sf2'
-BASE_PATH = '../data/cal500_txt'
+BASE_PATH = '../data/sanity'
 if not os.path.exists(os.path.join(BASE_PATH, OUTPUT_PATH)):
     os.makedirs(os.path.join(BASE_PATH, OUTPUT_PATH))
 
-# <codecell>
-def shift_cqt(cqt, interval):
-  ''' Shifts a cqt matrix by the given interval '''
-  new_cqt = np.zeros(cqt.shape)
-  min_value = np.amin(cqt)
-  end_index = cqt.shape[0]-1
-  fill_array = min_value*np.ones((abs(interval)+1, cqt.shape[1]))
-  # If we are shifting the cqt down, we need to replace the first rows with
-  # zero vectors.  If we are shifting it upwards, we need to replace the last
-  # rows with zero vectors.
-  # roll down axis 0 by interval amount
-  if interval != 0:
-    cqt_roll = np.roll(cqt, interval, axis = 0)
-    if interval < 0:
-      #take slice of lower rows
-      cqt_slice = cqt_roll[0:end_index-abs(interval)]
-      #stack with fill_array
-      new_cqt = np.vstack((cqt_slice, fill_array))
-    elif interval> 0:
-      #take slice of upper rows
-      cqt_slice = cqt_roll[0:(end_index-interval)]
-      #stack with fill_array
-      new_cqt = np.vstack((fill_array,cqt_slice))
-  else:
-    new_cqt = cqt
-  return new_cqt
+
 
 # Utility functions for converting between filenames
 def to_cqt_npy(filename):
@@ -85,19 +65,30 @@ def to_onset_strength_npy(filename):
     ''' Given some/path/file.mid or .mp3, return some/path/file_onset_strength.npy '''
     return os.path.splitext(filename)[0] + '_onset_strength.npy'
 def to_piano_cqt_npy(filename):
-    return os.path.splitext(midi_filename)[0]+'-piano.npy'
+    return os.path.splitext(filename)[0]+'-piano.npy'
+def to_chroma_npy(filename):
+    return os.path.splitext(filename)[0]+'-chroma.npy'
 # <codecell>
 
-def make_midi_cqt(midi_filename, piano, midi_info = None):
+def make_midi_cqt(midi_filename, piano, chroma, midi_info = None):
   if midi_info is None:
     midi_info = pretty_midi.PrettyMIDI(midi.read_midifile(midi_filename))
   if piano:
     midi_gram = align_midi.midi_to_piano_cqt(midi_info)
+    print midi_gram.shape
     midi_beats, bpm = align_midi.midi_beat_track(midi_info)
     midi_gram = align_midi.post_process_cqt(midi_gram, midi_beats)
-    piano_cqt_path = os.path.splitext(midi_filename)[0]+'-piano.npy'
     np.save(to_piano_cqt_npy(midi_filename), midi_gram)
+    print midi_gram.shape
     return midi_gram
+  elif chroma:
+    chroma_gram = align_midi.midi_to_chroma(midi_info)
+    print chroma_gram.shape
+    midi_beats, bpm = align_midi.midi_beat_track(midi_info)
+    chroma_gram = align_midi.post_process_cqt(chroma_gram, midi_beats)
+    np.save(to_chroma_npy(midi_filename), chroma_gram)
+    print chroma_gram.shape
+    return chroma_gram
   else:
     midi_gram = align_midi.midi_to_cqt(midi_info, SF2_PATH)
     # Get beats
@@ -138,29 +129,39 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
 
     # Cache audio CQT and onset strength
 
-    # Don't need to load in audio multiple times
-    # if mp3_filename is None:
-    #   filename = os.path.basename(midi_filename)
-    #   filename_raw = os.path.splitext(filename)[0]
-    #   mp
 
     audio, fs = librosa.load(mp3_filename)
     if use_prev_data:
-      if os.path.exists(to_cqt_npy(mp3_filename)) and os.path.exists(to_onset_strength_npy(mp3_filename)):
-        print "Using pre-existing CQT and onset strength data for {}".format(os.path.split(mp3_filename)[1])
-        # Create audio CQT, which is just frame-wise power, and onset strength
-        audio_gram = np.load(to_cqt_npy(mp3_filename))
-        audio_onset_strength = np.load(to_onset_strength_npy(mp3_filename))
+      if chroma:
+        if os.path.exists(to_chroma_npy(mp3_filename)) and os.path.exists(to_onset_strength_npy(mp3_filename)):
+          audio_gram = np.load(to_chroma_npy(mp3_filename))
+          audio_onset_strength = np.load(to_onset_strength_npy(mp3_filename))
+        else:
+          print "Generating chroma features for {}".format(mp3_filename)
+          audio_gram, audio_onset_strength = align_midi.audio_to_chroma_and_onset_strength(audio, fs = fs)
+          np.save(to_chroma_npy(mp3_filename), audio_gram)
+          np.save(to_onset_strength_npy(mp3_filename), audio_onset_strength)
       else:
-        print "Creating CQT and onset strength signal for {}".format(os.path.split(mp3_filename)[1])
+        if os.path.exists(to_cqt_npy(mp3_filename)) and os.path.exists(to_onset_strength_npy(mp3_filename)):
+          print "Using pre-existing CQT and onset strength data for {}".format(os.path.split(mp3_filename)[1])
+          # Create audio CQT, which is just frame-wise power, and onset strength
+          audio_gram = np.load(to_cqt_npy(mp3_filename))
+          audio_onset_strength = np.load(to_onset_strength_npy(mp3_filename))
+        else:
+          print "Creating CQT and onset strength signal for {}".format(os.path.split(mp3_filename)[1])
+          audio_gram, audio_onset_strength = align_midi.audio_to_cqt_and_onset_strength(audio, fs=fs)
+          np.save(to_cqt_npy(mp3_filename), audio_gram)
+          np.save(to_onset_strength_npy(mp3_filename), audio_onset_strength)
+    else:
+      print "Creating CQT and onset strength signal for {}".format(os.path.split(mp3_filename)[1])
+      if chroma:
+        audio_gram, audio_onset_strength = align_midi.audio_to_chroma_and_onset_strength(audio, fs = fs)
+        np.save(to_chroma_npy(mp3_filename), audio_gram)
+        np.save(to_onset_strength_npy(mp3_filename), audio_onset_strength)
+      else:
         audio_gram, audio_onset_strength = align_midi.audio_to_cqt_and_onset_strength(audio, fs=fs)
         np.save(to_cqt_npy(mp3_filename), audio_gram)
         np.save(to_onset_strength_npy(mp3_filename), audio_onset_strength)
-    else:
-      print "Creating CQT and onset strength signal for {}".format(os.path.split(mp3_filename)[1])
-      audio_gram, audio_onset_strength = align_midi.audio_to_cqt_and_onset_strength(audio, fs=fs)
-      np.save(to_cqt_npy(mp3_filename), audio_gram)
-      np.save(to_onset_strength_npy(mp3_filename), audio_onset_strength)
 
     if use_prev_data and not make_midi_info:
       if piano:
@@ -168,19 +169,25 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
           midi_gram = np.load(to_piano_cqt_npy(midi_filename))
         else:
           print "Creating CQT for {}".format(os.path.split(midi_filename)[1])
-          midi_gram = make_midi_cqt(midi_filename, piano, m)
+          midi_gram = make_midi_cqt(midi_filename, piano,chroma, m)
+      elif chroma:
+        if os.path.exists(to_chroma_npy(midi_filename)):
+          midi_gram = np.load(to_chroma_npy(midi_filename))
+        else:
+          print "Creating CQT for {}".format(os.path.split(midi_filename)[1])
+          midi_gram = make_midi_cqt(midi_filename, piano,chroma, m)
       else:
         if os.path.exists(to_cqt_npy(midi_filename)):
           midi_gram = np.load(to_cqt_npy(midi_filename))
         else:
           print "Creating CQT for {}".format(os.path.split(midi_filename)[1])
-          midi_gram = make_midi_cqt(midi_filename, piano, m)
+          midi_gram = make_midi_cqt(midi_filename, piano,chroma, m)
     else:
       print "Creating CQT for {}".format(os.path.split(midi_filename)[1])
       # Generate synthetic MIDI CQT
-      midi_gram = make_midi_cqt(midi_filename, piano, m)
+      midi_gram = make_midi_cqt(midi_filename, piano,chroma, m)
     if interval != 0:
-      midi_gram = shift_cqt(midi_gram, interval)
+      midi_gram = align_midi.shift_cqt(midi_gram, interval)
     # Load in CQTs
 
     # midi_gram = align_midi.midi_to_piano_cqt(m)
@@ -189,7 +196,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
 
     # Compute beats
     midi_beats, bpm = align_midi.midi_beat_track(m)
-    audio_beats = librosa.beat.beat_track(onsets=audio_onset_strength, hop_length=512/4, bpm=bpm)[1]/4
+    audio_beats = librosa.beat.beat_track(onset_envelope=audio_onset_strength, hop_length=512/4, bpm=bpm)[1]/4
     # Beat-align and log/normalize the audio CQT
     audio_gram = align_midi.post_process_cqt(audio_gram, audio_beats)
 
@@ -210,10 +217,12 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
                              fmin=librosa.midi_to_hz(36),
                              fmax=librosa.midi_to_hz(96))
 
+    print audio_gram.shape
+    print midi_gram.shape
     # Get similarity matrix
     similarity_matrix = scipy.spatial.distance.cdist(midi_gram.T, audio_gram.T, metric='cosine')
     # Get best path through matrix
-    p, q, score = align_midi.dpmod(similarity_matrix,pen = np.percentile(similarity_matrix, 44))
+    p, q, score = align_midi.dpmod(similarity_matrix,experimental = False, forceH = False)
 
     # Plot distance at each point of the lowst-cost path
     ax = plt.subplot2grid((4, 3), (2, 0), rowspan=2)
@@ -256,7 +265,6 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
           # Load in the audio data (needed for writing out)
           audio, fs = librosa.load(mp3_filename, sr=None)
           # Synthesize the aligned midi
-          # midi_audio_aligned = m_aligned.fluidsynth()
           midi_audio_aligned = m_aligned.fluidsynth(fs=fs, sf2_path=SF2_PATH)
 
           # Trim to the same size as audio
@@ -292,21 +300,11 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
 mp3_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'audio', '*.mp3')))
 midi_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'midi', '*.mid')))
 
-path_to_txt = '../data/cal500_txt/Clean_MIDIs-path_to_cal500_path.txt'
+path_to_txt = os.path.join(BASE_PATH, 'sanity_paths.txt')
 path_file = open(path_to_txt, 'rb')
 filereader = csv.reader(path_file, delimiter='\t')
-amt = 0
-# for row in filereader:
-#   amt +=1
-# print "Processing {} MIDI files.".format(amt)
+
 for row in filereader:
-  midi_filename = BASE_PATH+'/Clean_MIDIs/'+row[0]
+  midi_filename = BASE_PATH+'/midi/'+row[0]
   mp3_filename =  BASE_PATH+ '/audio/'+row[1]
-  align_one_file(mp3_filename, midi_filename, midi_filename.replace('Clean_MIDIs', OUTPUT_PATH),interval = interval)
-
-
-
-
-# print "Processing {} files.".format(max(len(mp3_glob), len(midi_glob)))
-# for mp3_filename, midi_filename in zip(mp3_glob, midi_glob):
-#   align_one_file(mp3_filename, midi_filename, midi_filename.replace('midi', OUTPUT_PATH),interval = interval)
+  align_one_file(mp3_filename, midi_filename, midi_filename.replace('midi', OUTPUT_PATH),interval = interval)

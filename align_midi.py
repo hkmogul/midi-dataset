@@ -229,6 +229,10 @@ def midi_to_piano_cqt(midi):
   piano_subset = piano_roll[36:96]+1e-10 #want just C3 to C8 of piano roll
   return piano_subset
 
+def midi_to_chroma(midi):
+  return midi.get_chroma(times = librosa.frames_to_time(np.arange(midi.get_end_time()*22050/512)))
+
+
 def shift_cqt(cqt, interval):
     ''' Shifts a cqt matrix by the given interval '''
 
@@ -278,6 +282,13 @@ def audio_to_cqt_and_onset_strength(audio, fs=22050, hop=512):
     return audio_gram, audio_onset_strength
 
 # <codecell>
+def audio_to_chroma_and_onset_strength(audio, fs = 22050, hop = 512):
+  H,P = librosa.decompose.hpss(librosa.stft(audio))
+  audio_harmonic = librosa.istft(H)
+  audio_percussive = librosa.istft(P)
+  chroma_gram = librosa.feature.chromagram(audio_harmonic)
+  audio_onset_strength = librosa.onset.onset_strength(audio_percussive, hop_length = hop/4, sr = fs)
+  return chroma_gram, audio_onset_strength
 
 def midi_beat_track(midi, fs=22050, hop=512.):
     '''
