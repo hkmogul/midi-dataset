@@ -21,7 +21,7 @@ import csv
 
 
 # OUTPUT_PATH = 'midi-aligned-additive-dpmod'
-OUTPUT_PATH = 'midi-alignment-exp'
+OUTPUT_PATH = 'midi-alignment-exp-ForceH10'
 
 piano = False
 write_mp3 = False
@@ -48,7 +48,7 @@ if '-m' in sys.argv:
 # <codecell>
 
 SF2_PATH = '../../Performer Synchronization Measure/SGM-V2.01.sf2'
-BASE_PATH = '../data/sanity'
+BASE_PATH = '../data/cal500_txt'
 if not os.path.exists(os.path.join(BASE_PATH, OUTPUT_PATH)):
     os.makedirs(os.path.join(BASE_PATH, OUTPUT_PATH))
 
@@ -222,7 +222,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     # Get similarity matrix
     similarity_matrix = scipy.spatial.distance.cdist(midi_gram.T, audio_gram.T, metric='cosine')
     # Get best path through matrix
-    p, q, score = align_midi.dpmod(similarity_matrix,experimental = False, forceH = False)
+    p, q, score = align_midi.dpmod(similarity_matrix,experimental = False, forceH = True)
 
     # Plot distance at each point of the lowst-cost path
     ax = plt.subplot2grid((4, 3), (2, 0), rowspan=2)
@@ -300,11 +300,11 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
 mp3_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'audio', '*.mp3')))
 midi_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'midi', '*.mid')))
 
-path_to_txt = os.path.join(BASE_PATH, 'sanity_paths.txt')
+path_to_txt = os.path.join(BASE_PATH, 'Clean_MIDIs-path_to_cal500_path.txt')
 path_file = open(path_to_txt, 'rb')
 filereader = csv.reader(path_file, delimiter='\t')
 
 for row in filereader:
-  midi_filename = BASE_PATH+'/midi/'+row[0]
+  midi_filename = BASE_PATH+'/Clean_MIDIs/'+row[0]
   mp3_filename =  BASE_PATH+ '/audio/'+row[1]
-  align_one_file(mp3_filename, midi_filename, midi_filename.replace('midi', OUTPUT_PATH),interval = interval)
+  align_one_file(mp3_filename, midi_filename, midi_filename.replace('Clean_MIDIs', OUTPUT_PATH),interval = interval)

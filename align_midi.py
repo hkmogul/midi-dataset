@@ -49,7 +49,7 @@ def dpcore(M, pen, experimental = False,forceH = False, forceV = False):
       for i in xrange((D.shape[0] - 1)):
           for j in xrange((D.shape[1] - 1)):
               # Diagonal move (which has no penalty) is lowest
-              if j < (.05*(D.shape[1]-1)):
+              if j < (.1*(D.shape[1]-1)):
                 phi[i + 1, j + 1] = 1
                 D[i + 1, j + 1] += D[i, j + 1] + pen
               else:
