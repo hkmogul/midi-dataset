@@ -211,11 +211,12 @@ def midi_to_cqt(midi, sf2_path=None, fs=22050, hop=512):
             del midi_no_drums.instruments[n]
     # Synthesize the MIDI using the supplied sf2 path
     midi_audio = midi_no_drums.fluidsynth(fs=fs, sf2_path=sf2_path)
+    # midi_audio = midi_no_drums.synthesize(fs = fs)
     # Use the harmonic part of the signal
-    # H, P = librosa.decompose.hpss(librosa.stft(midi_audio))
-    # midi_audio_harmonic = librosa.istft(H)
+    H, P = librosa.decompose.hpss(librosa.stft(midi_audio))
+    midi_audio_harmonic = librosa.istft(H)
     # Compute log frequency spectrogram of audio synthesized from MIDI
-    midi_gram = np.abs(librosa.cqt(y=midi_audio,
+    midi_gram = np.abs(librosa.cqt(y=midi_audio_harmonic,
                                    sr=fs,
                                    hop_length=hop,
                                    fmin=librosa.midi_to_hz(36),
@@ -231,6 +232,7 @@ def midi_to_piano_cqt(midi):
 
 def midi_to_chroma(midi):
   return midi.get_chroma(times = librosa.frames_to_time(np.arange(midi.get_end_time()*22050/512)))
+  # return midi.get_chroma()
 
 
 def shift_cqt(cqt, interval):
@@ -239,7 +241,6 @@ def shift_cqt(cqt, interval):
     # If we are shifting the cqt down, we need to replace the first rows with
     # zero vectors.  If we are shifting it upwards, we need to replace the last
     # rows with zero vectors.
-    # roll down axis 0 by interval amount
     if interval != 0:
       min_value = np.amin(cqt)
       fill_array = min_value*np.ones((abs(interval), cqt.shape[1]))
@@ -278,7 +279,7 @@ def audio_to_cqt_and_onset_strength(audio, fs=22050, hop=512):
                                     n_bins = 60))**2
 
     # Beat track the audio file at 4x the hop rate
-    audio_onset_strength = librosa.onset.onset_strength(audio_percussive, hop_length=hop/4, sr=fs)
+    audio_onset_strength = librosa.onset.onset_strength(audio_percussive , hop_length=hop/4, sr=fs)
     return audio_gram, audio_onset_strength
 
 # <codecell>

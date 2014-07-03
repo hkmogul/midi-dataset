@@ -19,16 +19,21 @@ import align_midi
 import scipy.io
 import csv
 
-
-# OUTPUT_PATH = 'midi-aligned-additive-dpmod'
-OUTPUT_PATH = 'midi-alignment-exp-ForceH10'
+''' Command line parameters:
+    -p : Uses the piano roll in place of the MIDI CQT
+    -w : Write a comparison mp3 (aligned MIDI in left channel, audio in right channel) to output folder
+    -c : Use chroma in place of CQT for both MIDI and audio (-p supercedes this in the case both are present)
+    -u : Use existing CQT data- useful for comparing outputs of path alignment rather than runtime or CQT generation.
+    -m : Make MIDI info: a separate method if experimenting with MIDI CQT (or other representation) generation.
+'''
+OUTPUT_PATH = 'writeup-sine_waves_with_hpss'
 
 piano = False
 write_mp3 = False
 use_prev_data = False# choice of using preexisting data
 make_midi_info = False # make new midi data (in case you think it may have been altered)
 chroma = False
-interval = 0
+
 if '-w' in sys.argv:
   write_mp3 = True
 if '-p' in sys.argv:
@@ -36,19 +41,15 @@ if '-p' in sys.argv:
   piano = True
 elif '-c' in sys.argv:
   OUTPUT_PATH = OUTPUT_PATH + '-chroma'
-  print "using chroma"
   chroma = True
 if '-u' in sys.argv:
   use_prev_data = True
-if '-i' in sys.argv:
-  interval = -2
-  OUTPUT_PATH = OUTPUT_PATH+str(interval)
 if '-m' in sys.argv:
   make_midi_info = True
 # <codecell>
 
 SF2_PATH = '../../Performer Synchronization Measure/SGM-V2.01.sf2'
-BASE_PATH = '../data/cal500_txt'
+BASE_PATH = '../data/sanity'
 if not os.path.exists(os.path.join(BASE_PATH, OUTPUT_PATH)):
     os.makedirs(os.path.join(BASE_PATH, OUTPUT_PATH))
 
@@ -75,19 +76,15 @@ def make_midi_cqt(midi_filename, piano, chroma, midi_info = None):
     midi_info = pretty_midi.PrettyMIDI(midi.read_midifile(midi_filename))
   if piano:
     midi_gram = align_midi.midi_to_piano_cqt(midi_info)
-    print midi_gram.shape
     midi_beats, bpm = align_midi.midi_beat_track(midi_info)
     midi_gram = align_midi.post_process_cqt(midi_gram, midi_beats)
     np.save(to_piano_cqt_npy(midi_filename), midi_gram)
-    print midi_gram.shape
     return midi_gram
   elif chroma:
     chroma_gram = align_midi.midi_to_chroma(midi_info)
-    print chroma_gram.shape
     midi_beats, bpm = align_midi.midi_beat_track(midi_info)
     chroma_gram = align_midi.post_process_cqt(chroma_gram, midi_beats)
     np.save(to_chroma_npy(midi_filename), chroma_gram)
-    print chroma_gram.shape
     return chroma_gram
   else:
     midi_gram = align_midi.midi_to_cqt(midi_info, SF2_PATH)
@@ -99,7 +96,7 @@ def make_midi_cqt(midi_filename, piano, chroma, midi_info = None):
     return midi_gram
 
 
-def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_diagnostics=True, interval=0):
+def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_diagnostics=True):
     '''
     Helper function for aligning a MIDI file to an audio file.
 
@@ -126,9 +123,6 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     #check if output path exists, and create it if necessary
     if not os.path.exists(os.path.split(output_midi_filename)[0]):
       os.makedirs(os.path.split(output_midi_filename)[0])
-
-    # Cache audio CQT and onset strength
-
 
     audio, fs = librosa.load(mp3_filename)
     if use_prev_data:
@@ -186,13 +180,9 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
       print "Creating CQT for {}".format(os.path.split(midi_filename)[1])
       # Generate synthetic MIDI CQT
       midi_gram = make_midi_cqt(midi_filename, piano,chroma, m)
-    if interval != 0:
-      midi_gram = align_midi.shift_cqt(midi_gram, interval)
-    # Load in CQTs
 
-    # midi_gram = align_midi.midi_to_piano_cqt(m)
-    # and audio onset strength signal
-    # audio_onset_strength = np.load(to_onset_strength_npy(mp3_filename))
+
+
 
     # Compute beats
     midi_beats, bpm = align_midi.midi_beat_track(m)
@@ -222,12 +212,11 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     # Get similarity matrix
     similarity_matrix = scipy.spatial.distance.cdist(midi_gram.T, audio_gram.T, metric='cosine')
     # Get best path through matrix
-    p, q, score = align_midi.dpmod(similarity_matrix,experimental = False, forceH = True)
+    p, q, score = align_midi.dpmod(similarity_matrix,experimental = False, forceH = False)
 
     # Plot distance at each point of the lowst-cost path
     ax = plt.subplot2grid((4, 3), (2, 0), rowspan=2)
     plt.plot([similarity_matrix[p_v, q_v] for p_v, q_v in zip(p, q)])
-    # plt.title('Distance at each point on lowest-cost path- Minimum Harmonic Interval: {} Half Steps'.format(interval))
     plt.title('Distance at each point on lowest-cost path')
 
 
@@ -300,11 +289,11 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
 mp3_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'audio', '*.mp3')))
 midi_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'midi', '*.mid')))
 
-path_to_txt = os.path.join(BASE_PATH, 'Clean_MIDIs-path_to_cal500_path.txt')
+path_to_txt = os.path.join(BASE_PATH, 'sanity_paths.txt')
 path_file = open(path_to_txt, 'rb')
 filereader = csv.reader(path_file, delimiter='\t')
 
 for row in filereader:
-  midi_filename = BASE_PATH+'/Clean_MIDIs/'+row[0]
+  midi_filename = BASE_PATH+'/midi/'+row[0]
   mp3_filename =  BASE_PATH+ '/audio/'+row[1]
-  align_one_file(mp3_filename, midi_filename, midi_filename.replace('Clean_MIDIs', OUTPUT_PATH),interval = interval)
+  align_one_file(mp3_filename, midi_filename, midi_filename.replace('midi', OUTPUT_PATH))
