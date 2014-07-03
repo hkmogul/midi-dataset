@@ -106,7 +106,7 @@ else:
         files_to_compare.append(mat_file.replace(base_path+path_1,''))
 
   for file in files_to_compare:
-    error_rate = compare_paths(base_path+path_1+'/'+file, base_path+path_2+'/'+file, percent_in = 5)
+    error_rate = compare_paths(base_path+path_1+'/'+file, base_path+path_2+'/'+file, percent_in = 0)
     print file +" {} error_rate".format(error_rate)
     if error_rate == 0:
       amt_match += 1
