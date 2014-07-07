@@ -26,7 +26,7 @@ import csv
     -u : Use existing CQT data- useful for comparing outputs of path alignment rather than runtime or CQT generation.
     -m : Make MIDI info: a separate method if experimenting with MIDI CQT (or other representation) generation.
 '''
-OUTPUT_PATH = 'writeup-sine_waves_with_hpss'
+OUTPUT_PATH = 'fuzz_experiment_hundredth'
 
 piano = False
 write_mp3 = False
@@ -75,10 +75,12 @@ def make_midi_cqt(midi_filename, piano, chroma, midi_info = None):
   if midi_info is None:
     midi_info = pretty_midi.PrettyMIDI(midi.read_midifile(midi_filename))
   if piano:
+    print "Generating CQT with piano roll"
     midi_gram = align_midi.midi_to_piano_cqt(midi_info)
     midi_beats, bpm = align_midi.midi_beat_track(midi_info)
     midi_gram = align_midi.post_process_cqt(midi_gram, midi_beats)
     np.save(to_piano_cqt_npy(midi_filename), midi_gram)
+    midi_gram = align_midi.piano_roll_fuzz(midi_gram)
     return midi_gram
   elif chroma:
     chroma_gram = align_midi.midi_to_chroma(midi_info)
@@ -207,8 +209,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
                              fmin=librosa.midi_to_hz(36),
                              fmax=librosa.midi_to_hz(96))
 
-    print audio_gram.shape
-    print midi_gram.shape
+
     # Get similarity matrix
     similarity_matrix = scipy.spatial.distance.cdist(midi_gram.T, audio_gram.T, metric='cosine')
     # Get best path through matrix

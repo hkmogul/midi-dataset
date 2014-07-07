@@ -230,6 +230,22 @@ def midi_to_piano_cqt(midi):
   piano_subset = piano_roll[36:96]+1e-10 #want just C3 to C8 of piano roll
   return piano_subset
 
+def piano_roll_fuzz(piano_roll):
+  ''' Fuzzes a CQT emulating piano roll so the note-ons look more like synthesized notes '''
+  fuzzed_piano = piano_roll.copy()
+  # off notes are -1, on are nearing 0 (like dB)
+  # i denotes column, j is row
+  for i in xrange(piano_roll.shape[1]):
+      col = piano_roll[:,i]
+      for j in xrange(col.shape[0]):
+          if col[j] != -1.0:
+              if j < col.shape[0]-1 :
+                  fuzzed_piano[j+1,i] = col[j]/100.0
+              if j > 0:
+                  fuzzed_piano[j-1,i] = col[j]/100.0
+  return fuzzed_piano
+
+
 def midi_to_chroma(midi):
   return midi.get_chroma(times = librosa.frames_to_time(np.arange(midi.get_end_time()*22050/512)))
   # return midi.get_chroma()
