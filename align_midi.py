@@ -239,16 +239,22 @@ def piano_roll_fuzz(piano_roll):
   for i in xrange(piano_roll.shape[1]):
       col = piano_roll[:,i]
       for j in xrange(col.shape[0]):
-          if col[j] != -1.0:
-              # if j < col.shape[0]-2 :
-                  # fuzzed_piano[j+2,i] = col[j]/0.06
-              if j < col.shape[0]-1 :
-                  fuzzed_piano[j+1,i] = col[j]/.2
-              if j > 1:
-                  # fuzzed_piano[j-2,i] = col[j]/.06
-                  fuzzed_piano[j-1,i] = col[j]/.2
-              elif j > 0:
-                  fuzzed_piano[j-1,i] = col[j]/.2
+        onset = False
+        if col[j] != -1.0:
+          # check if the previous location had a note-on value
+          if i != 0:
+            if piano_roll[j][i-1] == -1:
+              onset = True
+          if j < col.shape[0]-1 :
+            if onset:
+              fuzzed_piano[j+1,i] = col[j]/.1
+            else:
+              fuzzed_piano[j+1,i] = col[j]/.2
+          if j > 0:
+            if onset:
+              fuzzed_piano[j-1,i] = col[j]/.1
+            else:
+              fuzzed_piano[j-1,i] = col[j]/.2
   return fuzzed_piano
 
 def clean_audio_gram(audio_gram, threshold = None):
