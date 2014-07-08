@@ -18,6 +18,8 @@ sys.path.append('../')
 import align_midi
 import scipy.io
 import csv
+import scipy.ndimage
+# import scipy
 
 ''' Command line parameters:
     -p : Uses the piano roll in place of the MIDI CQT
@@ -26,7 +28,7 @@ import csv
     -u : Use existing CQT data- useful for comparing outputs of path alignment rather than runtime or CQT generation.
     -m : Make MIDI info: a separate method if experimenting with MIDI CQT (or other representation) generation.
 '''
-OUTPUT_PATH = 'fuzz_experiment_hundredth'
+OUTPUT_PATH = 'clean_audio_experiment'
 
 piano = False
 write_mp3 = False
@@ -80,7 +82,6 @@ def make_midi_cqt(midi_filename, piano, chroma, midi_info = None):
     midi_beats, bpm = align_midi.midi_beat_track(midi_info)
     midi_gram = align_midi.post_process_cqt(midi_gram, midi_beats)
     np.save(to_piano_cqt_npy(midi_filename), midi_gram)
-    midi_gram = align_midi.piano_roll_fuzz(midi_gram)
     return midi_gram
   elif chroma:
     chroma_gram = align_midi.midi_to_chroma(midi_info)
@@ -185,14 +186,17 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
 
 
 
-
+    midi_gram = align_midi.piano_roll_fuzz(midi_gram)
+    midi_gram = librosa.util.normalize(midi_gram, axis = 0)
     # Compute beats
     midi_beats, bpm = align_midi.midi_beat_track(m)
     audio_beats = librosa.beat.beat_track(onset_envelope=audio_onset_strength, hop_length=512/4, bpm=bpm)[1]/4
     # Beat-align and log/normalize the audio CQT
     audio_gram = align_midi.post_process_cqt(audio_gram, audio_beats)
-
+    # pre_copy = np.copy(audio_gram)
+    # scipy.ndimage.filters.gaussian_filter(pre_copy, sigma= np.std(pre_copy),order = 3, output = audio_gram)
     # Plot log-fs grams
+    audio_gram = align_midi.clean_audio_gram(audio_gram, threshold = np.percentile(audio_gram, 40))
     plt.figure(figsize=(36, 24))
     ax = plt.subplot2grid((4, 3), (0, 0), colspan=3)
     plt.title('MIDI Synthesized')

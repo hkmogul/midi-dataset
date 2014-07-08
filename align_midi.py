@@ -7,6 +7,7 @@ import numpy as np
 import librosa
 import copy
 import numba
+import scipy.ndimage
 
 # <codecell>
 
@@ -232,19 +233,36 @@ def midi_to_piano_cqt(midi):
 
 def piano_roll_fuzz(piano_roll):
   ''' Fuzzes a CQT emulating piano roll so the note-ons look more like synthesized notes '''
-  fuzzed_piano = piano_roll.copy()
+  fuzzed_piano = np.copy(piano_roll)
   # off notes are -1, on are nearing 0 (like dB)
   # i denotes column, j is row
   for i in xrange(piano_roll.shape[1]):
       col = piano_roll[:,i]
       for j in xrange(col.shape[0]):
           if col[j] != -1.0:
+              # if j < col.shape[0]-2 :
+                  # fuzzed_piano[j+2,i] = col[j]/0.06
               if j < col.shape[0]-1 :
-                  fuzzed_piano[j+1,i] = col[j]/100.0
-              if j > 0:
-                  fuzzed_piano[j-1,i] = col[j]/100.0
+                  fuzzed_piano[j+1,i] = col[j]/.2
+              if j > 1:
+                  # fuzzed_piano[j-2,i] = col[j]/.06
+                  fuzzed_piano[j-1,i] = col[j]/.2
+              elif j > 0:
+                  fuzzed_piano[j-1,i] = col[j]/.2
   return fuzzed_piano
 
+def clean_audio_gram(audio_gram, threshold = None):
+  ''' Sets any low valued cells to the min of the graph '''
+  min_value = np.amin(audio_gram)
+  clean_gram = np.copy(audio_gram)
+  if threshold is None:
+    threshold = np.percentile(audio_gram, 20)
+  for i in xrange(audio_gram.shape[1]):
+    col = audio_gram[:,i]
+    for j in xrange(col.shape[0]):
+      if col[j] <= threshold:
+        clean_gram[j,i] = -1
+  return clean_gram
 
 def midi_to_chroma(midi):
   return midi.get_chroma(times = librosa.frames_to_time(np.arange(midi.get_end_time()*22050/512)))
