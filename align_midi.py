@@ -239,24 +239,29 @@ def piano_roll_fuzz(piano_roll):
   for i in xrange(piano_roll.shape[1]):
       col = piano_roll[:,i]
       for j in xrange(col.shape[0]):
+        if col[j] != -1.0:
+          if j < col.shape[0]-1 :
+            fuzzed_piano[j+1,i] = col[j]/.3
+          if j > 0:
+            fuzzed_piano[j-1,i] = col[j]/.3
+  return fuzzed_piano
+
+def accentuate_onsets(piano_roll):
+  ''' Adds extra value surrounding onset of piano roll notes '''
+  onset_piano = np.copy(piano_roll)
+  for i in xrange(piano_roll.shape[1]):
+      col = piano_roll[:,i]
+      for j in xrange(col.shape[0]):
         onset = False
         if col[j] != -1.0:
           # check if the previous location had a note-on value
-          if i != 0:
-            if piano_roll[j][i-1] == -1:
-              onset = True
-          if j < col.shape[0]-1 :
-            if onset:
-              fuzzed_piano[j+1,i] = col[j]/.1
-            else:
-              fuzzed_piano[j+1,i] = col[j]/.2
-          if j > 0:
-            if onset:
-              fuzzed_piano[j-1,i] = col[j]/.1
-            else:
-              fuzzed_piano[j-1,i] = col[j]/.2
-  return fuzzed_piano
-
+          if i != 0 and piano_roll[j][i-1] == -1:
+            # then this is an onset
+            if j > 0:
+              onset_piano[j-1,i] = col[j]/.3
+            if j < col.shape[0]-1:
+              onset_piano[j+1,i] = col[j]/.3
+  return onset_piano
 def clean_audio_gram(audio_gram, threshold = None):
   ''' Sets any low valued cells to the min of the graph '''
   min_value = np.amin(audio_gram)

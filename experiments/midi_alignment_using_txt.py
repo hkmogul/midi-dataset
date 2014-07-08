@@ -28,7 +28,7 @@ import scipy.ndimage
     -u : Use existing CQT data- useful for comparing outputs of path alignment rather than runtime or CQT generation.
     -m : Make MIDI info: a separate method if experimenting with MIDI CQT (or other representation) generation.
 '''
-OUTPUT_PATH = 'clean_audio_experiment'
+OUTPUT_PATH = 'clean_audio_onset_exaggeration'
 
 piano = False
 write_mp3 = False
@@ -184,10 +184,10 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
       # Generate synthetic MIDI CQT
       midi_gram = make_midi_cqt(midi_filename, piano,chroma, m)
 
-
-
+    midi_gram = align_midi.accentuate_onsets(midi_gram)
     midi_gram = align_midi.piano_roll_fuzz(midi_gram)
     midi_gram = librosa.util.normalize(midi_gram, axis = 0)
+
     # Compute beats
     midi_beats, bpm = align_midi.midi_beat_track(m)
     audio_beats = librosa.beat.beat_track(onset_envelope=audio_onset_strength, hop_length=512/4, bpm=bpm)[1]/4
