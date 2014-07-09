@@ -186,8 +186,10 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
 
     # midi_gram = align_midi.accentuate_onsets(midi_gram)
     midi_gram = align_midi.piano_roll_fuzz(midi_gram)
-    midi_gram = librosa.util.normalize(midi_gram, axis = 0)
     midi_gram = align_midi.clean_audio_gram(midi_gram, threshold = np.percentile(midi_gram,40))
+    # midi_gram = align_midi.accentuate_onsets(m,midi_gram)
+    midi_gram = librosa.util.normalize(midi_gram, axis = 0)
+
     # Compute beats
     midi_beats, bpm = align_midi.midi_beat_track(m)
     audio_beats = librosa.beat.beat_track(onset_envelope=audio_onset_strength, hop_length=512/4, bpm=bpm)[1]/4
@@ -293,15 +295,19 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
 # Parallelization!
 mp3_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'audio', '*.mp3')))
 midi_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'midi', '*.mid')))
+if 'sanity' in BASE_PATH:
+  path_to_txt = os.path.join(BASE_PATH, 'sanity_paths.txt')
+else:
+  path_to_txt = os.path.join(BASE_PATH, 'Clean_MIDIs-path_to_cal500_path.txt')
 
-path_to_txt = os.path.join(BASE_PATH, 'Clean_MIDIs-path_to_cal500_path.txt')
 path_file = open(path_to_txt, 'rb')
 filereader = csv.reader(path_file, delimiter='\t')
 if 'sanity' in BASE_PATH:
-  midi_add = '/midi/'
+  midi_add = 'midi'
 else:
-  midi_add = '/Clean_MIDIs/'
+  midi_add = 'Clean_MIDIs'
+
 for row in filereader:
-  midi_filename = BASE_PATH+midi_add+row[0]
-  mp3_filename =  BASE_PATH+ '/audio/'+row[1]
-  align_one_file(mp3_filename, midi_filename, midi_filename.replace(midi_add, OUTPUT_PATH))
+  midi_filename = os.path.join(BASE_PATH,midi_add,row[0])
+  mp3_filename =  os.path.join(BASE_PATH, 'audio',row[1])
+  align_one_file(mp3_filename, midi_filename, midi_filename.replace(midi_add, OUTPUT_PATH+'/'))
