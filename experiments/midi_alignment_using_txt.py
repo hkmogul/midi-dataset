@@ -28,7 +28,7 @@ import scipy.ndimage
     -u : Use existing CQT data- useful for comparing outputs of path alignment rather than runtime or CQT generation.
     -m : Make MIDI info: a separate method if experimenting with MIDI CQT (or other representation) generation.
 '''
-OUTPUT_PATH = 'clean_audio_onset_exaggeration'
+OUTPUT_PATH = 'clean_exp'
 
 piano = False
 write_mp3 = False
@@ -184,10 +184,10 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
       # Generate synthetic MIDI CQT
       midi_gram = make_midi_cqt(midi_filename, piano,chroma, m)
 
-    midi_gram = align_midi.accentuate_onsets(midi_gram)
+    # midi_gram = align_midi.accentuate_onsets(midi_gram)
     midi_gram = align_midi.piano_roll_fuzz(midi_gram)
     midi_gram = librosa.util.normalize(midi_gram, axis = 0)
-
+    midi_gram = align_midi.clean_audio_gram(midi_gram, threshold = np.percentile(midi_gram,40))
     # Compute beats
     midi_beats, bpm = align_midi.midi_beat_track(m)
     audio_beats = librosa.beat.beat_track(onset_envelope=audio_onset_strength, hop_length=512/4, bpm=bpm)[1]/4
@@ -196,7 +196,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     # pre_copy = np.copy(audio_gram)
     # scipy.ndimage.filters.gaussian_filter(pre_copy, sigma= np.std(pre_copy),order = 3, output = audio_gram)
     # Plot log-fs grams
-    audio_gram = align_midi.clean_audio_gram(audio_gram, threshold = np.percentile(audio_gram, 40))
+    audio_gram = align_midi.clean_audio_gram(audio_gram, threshold = np.percentile(audio_gram, 50))
     plt.figure(figsize=(36, 24))
     ax = plt.subplot2grid((4, 3), (0, 0), colspan=3)
     plt.title('MIDI Synthesized')
@@ -294,11 +294,14 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
 mp3_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'audio', '*.mp3')))
 midi_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'midi', '*.mid')))
 
-path_to_txt = os.path.join(BASE_PATH, 'sanity_paths.txt')
+path_to_txt = os.path.join(BASE_PATH, 'Clean_MIDIs-path_to_cal500_path.txt')
 path_file = open(path_to_txt, 'rb')
 filereader = csv.reader(path_file, delimiter='\t')
-
+if 'sanity' in BASE_PATH:
+  midi_add = '/midi/'
+else:
+  midi_add = '/Clean_MIDIs/'
 for row in filereader:
-  midi_filename = BASE_PATH+'/midi/'+row[0]
+  midi_filename = BASE_PATH+midi_add+row[0]
   mp3_filename =  BASE_PATH+ '/audio/'+row[1]
-  align_one_file(mp3_filename, midi_filename, midi_filename.replace('midi', OUTPUT_PATH))
+  align_one_file(mp3_filename, midi_filename, midi_filename.replace(midi_add, OUTPUT_PATH))
