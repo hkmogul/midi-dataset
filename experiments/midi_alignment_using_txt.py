@@ -28,7 +28,7 @@ import scipy.ndimage
     -u : Use existing CQT data- useful for comparing outputs of path alignment rather than runtime or CQT generation.
     -m : Make MIDI info: a separate method if experimenting with MIDI CQT (or other representation) generation.
 '''
-OUTPUT_PATH = 'clean_exp'
+OUTPUT_PATH = 'pass_fail-exp'
 
 piano = False
 write_mp3 = False
@@ -51,7 +51,7 @@ if '-m' in sys.argv:
 # <codecell>
 
 SF2_PATH = '../../Performer Synchronization Measure/SGM-V2.01.sf2'
-BASE_PATH = '../data/sanity'
+BASE_PATH = '../data/pass-fail_distinguish'
 if not os.path.exists(os.path.join(BASE_PATH, OUTPUT_PATH)):
     os.makedirs(os.path.join(BASE_PATH, OUTPUT_PATH))
 
@@ -186,8 +186,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
 
     # midi_gram = align_midi.accentuate_onsets(midi_gram)
     midi_gram = align_midi.piano_roll_fuzz(midi_gram)
-    midi_gram = align_midi.clean_audio_gram(midi_gram, threshold = np.percentile(midi_gram,40))
-    # midi_gram = align_midi.accentuate_onsets(m,midi_gram)
+    # midi_gram = align_midi.clean_audio_gram(midi_gram, threshold = np.percentile(midi_gram,40))
     midi_gram = librosa.util.normalize(midi_gram, axis = 0)
 
     # Compute beats
@@ -195,10 +194,9 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     audio_beats = librosa.beat.beat_track(onset_envelope=audio_onset_strength, hop_length=512/4, bpm=bpm)[1]/4
     # Beat-align and log/normalize the audio CQT
     audio_gram = align_midi.post_process_cqt(audio_gram, audio_beats)
-    # pre_copy = np.copy(audio_gram)
-    # scipy.ndimage.filters.gaussian_filter(pre_copy, sigma= np.std(pre_copy),order = 3, output = audio_gram)
+
     # Plot log-fs grams
-    audio_gram = align_midi.clean_audio_gram(audio_gram, threshold = np.percentile(audio_gram, 50))
+    # audio_gram = align_midi.clean_audio_gram(audio_gram, threshold = np.percentile(audio_gram, 80))
     plt.figure(figsize=(36, 24))
     ax = plt.subplot2grid((4, 3), (0, 0), colspan=3)
     plt.title('MIDI Synthesized')
@@ -297,6 +295,8 @@ mp3_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'audio', '*.mp3')))
 midi_glob = sorted(glob.glob(os.path.join(BASE_PATH, 'midi', '*.mid')))
 if 'sanity' in BASE_PATH:
   path_to_txt = os.path.join(BASE_PATH, 'sanity_paths.txt')
+elif 'pass-fail_distinguish' in BASE_PATH:
+  path_to_txt = os.path.join(BASE_PATH, 'midi_mp3_paths.txt')
 else:
   path_to_txt = os.path.join(BASE_PATH, 'Clean_MIDIs-path_to_cal500_path.txt')
 
