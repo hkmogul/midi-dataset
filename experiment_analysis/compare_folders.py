@@ -72,7 +72,7 @@ def compare_paths(mat_path_1, mat_path_2,percent_in = 0):
   return float(nErrors)/total_possible
 
 
-base_path = '../data/sanity/'
+base_path = '../data/pass-fail_distinguish/'
 if len(sys.argv) <3:
   path_1 = raw_input('First folder name? ')
   path_2 = raw_input('Second folder name? ')
@@ -93,8 +93,8 @@ else:
   amt_match = 0
   amt_diff = 0
   # get all .mat filenames in common (error check for those of different filenames)
-  glob_1 = glob.glob(base_path+path_1+'/*.mat')
-  glob_2 = glob.glob(base_path+path_2+'/*.mat')
+  glob_1 = glob.glob(base_path+path_1+'/*/*.mat')
+  glob_2 = glob.glob(base_path+path_2+'/*/*.mat')
   files_to_compare = []
   if len(glob_2) <= len(glob_1):
     for mat_file in glob_2:

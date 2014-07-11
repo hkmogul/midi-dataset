@@ -77,15 +77,15 @@ def compare_paths(cqt_mat_path, piano_mat_path, percent_in = 0):
   return float(nErrors)/total_possible
 
 
-piano_base_path = '../data/cal500_txt/midi-alignment-exp-forceH-5/'
+piano_base_path = '../data/cal500_txt/fuzz_and_clean-piano/'
 path_to_530 = '../../MIDI_Results_5-30/'
 path_to_csv = '../../CSV_Analysis/5-30-14_Alignment_Results.csv'
 if not os.path.exists('../analytic-files/force_experiments'):
   os.makedirs('../analytic-files/force_experiments')
-success_file = open('../analytic-files/force_experiments/forceH5-Matching_Successful_alignments-forceH5.csv','w')
-diff_file = open('../analytic-files/force_experiments/forceH5-Differing_Successful_alignments-forceH5.csv','w')
-success_fail = open('../analytic-files/force_experiments/forceH5-Matching_Failing_alignments-forceH5.csv','w')
-diff_fail = open('../analytic-files/force_experiments/forceH5-Differing_Failing_alignments-forceH5.csv','w')
+success_file = open('../analytic-files/force_experiments/fuzz-Matching_Successful_alignments.csv','w')
+diff_file = open('../analytic-files/force_experiments/fuzz-Differing_Successful_alignments.csv','w')
+success_fail = open('../analytic-files/force_experiments/fuzz-Matching_Failing_alignments.csv','w')
+diff_fail = open('../analytic-files/force_experiments/fuzz-Differing_Failing_alignments.csv','w')
 
 amt_match = 0
 with open(path_to_csv) as csv_file:
