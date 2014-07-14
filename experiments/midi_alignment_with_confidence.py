@@ -69,7 +69,11 @@ may_30_file = open(path_to_may_30)
 csv_may = csv.reader(may_30_file)
 csv_may.next()
 for row in csv_may:
-  piano_out = os.path.join(BASE_PATH, 'midi-aligned-additive-dpmod-piano',vs_filename_to_path(row[0]))
+  if "Guns N Roses" in row[0] or "Mary Wells" in row[0]:
+    continue
+
+  title_path = vs_filename_to_path(row[0])
+  piano_out = os.path.join(BASE_PATH, 'midi-aligned-additive-dpmod-piano',title_path)
   success = row[2]
   mat_out = os.path.join('../../MIDI_Results_5-30',row[0]).replace('.mid', '.mat')+'.mat'
   # load cqt based results
@@ -78,7 +82,7 @@ for row in csv_may:
   q1 = cqt_mat['q'][0,:]
   sim_mat_1 = cqt_mat['similarity_matrix']
   score1 = cqt_mat['score'][0,0]
-  print "Analyzing {}".format(vs_filename_to_path(row[0]))
+  print "Analyzing {}".format(title_path)
 
   print "Successful alignment: {}".format(success)
   print "Weighted score: {}".format(score1)
@@ -113,6 +117,18 @@ for row in csv_may:
     cqt_scores_failUW = np.append(cqt_scores_failUW, uw_score1)
     norm_mat_fail = np.append(norm_mat_fail, norm_mat1)
     piano_diff_fail = np.append(piano_diff_fail, path_diff)
+
+
+  # linear regression on offset
+  # first, get original midi path
+  old_midi_path = os.path.join(BASE_PATH, 'Clean_MIDIs',title_path.replace('.mat','.mid'))
+  print "OLD PATH: {}".format(old_midi_path)
+  aligned_midi_path = os.path.join('../../MIDI_Results_5-30',row[0]+'.mid')
+  old_midi = pretty_midi.PrettyMIDI(midi.read_midifile(old_midi_path))
+  aligned_midi = pretty_midi.PrettyMIDI(midi.read_midifile(aligned_midi_path))
+  offsets = alignment_analysis.get_offsets(aligned_midi, old_midi)
+  print offsets[0]
+# simple statistics on some of the scores
 print "Passing weighted score statistics:"
 print "Average value: {}".format(np.mean(cqt_scores_pass))
 print "Maximum: {}".format(np.amax(cqt_scores_pass))
