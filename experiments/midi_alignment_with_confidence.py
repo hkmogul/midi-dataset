@@ -1,5 +1,4 @@
 import numpy as np
-import scipy.spatial.distance
 import matplotlib.pyplot as plt
 import librosa
 import midi
@@ -14,7 +13,7 @@ import align_midi
 import alignment_analysis
 import scipy.io
 import csv
-
+import scipy.stats
 
 ''' Start of post analysis of offset information to gain confidence measure in
     running alignment. Ultimate goal is to have failing alignments come out with
@@ -64,13 +63,20 @@ piano_diff_fail = np.zeros((0,))
 norm_mat_pass = np.zeros((0,))
 norm_mat_fail = np.zeros((0,))
 
+max_offset_pass = np.zeros((0,))
+max_offset_fail = np.zeros((0,))
+offset_deviation_pass = np.zeros((0,))
+offset_deviation_fail = np.zeros((0,))
+
+r_offset_pass = np.zeros((0,))
+r_offset_fail = np.zeros((0,))
 path_to_may_30 = '../../CSV_Analysis/5-30-14_Alignment_Results.csv'
 may_30_file = open(path_to_may_30)
 csv_may = csv.reader(may_30_file)
 csv_may.next()
 for row in csv_may:
-  if "Guns N Roses" in row[0] or "Mary Wells" in row[0]:
-    continue
+  # if "Guns N Roses" in row[0] or "Mary Wells" in row[0]:
+  #   continue
 
   title_path = vs_filename_to_path(row[0])
   piano_out = os.path.join(BASE_PATH, 'midi-aligned-additive-dpmod-piano',title_path)
@@ -122,12 +128,24 @@ for row in csv_may:
   # linear regression on offset
   # first, get original midi path
   old_midi_path = os.path.join(BASE_PATH, 'Clean_MIDIs',title_path.replace('.mat','.mid'))
-  print "OLD PATH: {}".format(old_midi_path)
   aligned_midi_path = os.path.join('../../MIDI_Results_5-30',row[0]+'.mid')
-  old_midi = pretty_midi.PrettyMIDI(midi.read_midifile(old_midi_path))
-  aligned_midi = pretty_midi.PrettyMIDI(midi.read_midifile(aligned_midi_path))
+  old_midi = pretty_midi.PrettyMIDI(old_midi_path)
+  aligned_midi = pretty_midi.PrettyMIDI(aligned_midi_path)
   offsets = alignment_analysis.get_offsets(aligned_midi, old_midi)
-  print offsets[0]
+
+
+  slope, intercept, r, p, stderr = alignment_analysis.get_regression_stats(aligned_midi, old_midi, offsets)
+  print "Maximum offset: {}".format(np.amax(offsets))
+  if int(success) == 1:
+    max_offset_pass = np.append(max_offset_pass, np.amax(offsets))
+    offset_deviation_pass = np.append(offset_deviation_pass, np.std(offsets))
+    r_offset_pass = np.append(r_offset_pass,r)
+  else:
+    max_offset_fail = np.append(max_offset_fail, np.amax(offsets))
+    offset_deviation_fail = np.append(offset_deviation_fail, np.std(offsets))
+    r_offset_fail = np.append(r_offset_fail, r)
+  print "Slope of regression: {}".format(slope)
+  print "R-value of regression: {}".format(r)
 # simple statistics on some of the scores
 print "Passing weighted score statistics:"
 print "Average value: {}".format(np.mean(cqt_scores_pass))
@@ -180,3 +198,49 @@ print "Average value: {}".format(np.mean(piano_diff_fail))
 print "Maximum: {}".format(np.amax(piano_diff_fail))
 print "Minimum: {}".format(np.amin(piano_diff_fail))
 print "Standard deviation: {}".format(np.std(piano_diff_fail))
+
+print "-----"
+print "average max offset (passing): {}".format(np.mean(max_offset_pass))
+print "standard deviation max offset (passing) {}".format(np.std(max_offset_pass))
+print "average max offset (failing): {}".format(np.mean(max_offset_fail))
+print "standard deviation max offset (failing) {}".format(np.std(max_offset_fail))
+
+print "average offset standard devation (passing: {})".format(np.mean(offset_deviation_pass))
+print "deviation of offset deviation (passing): {}".format(np.std(offset_deviation_pass))
+print "average offset standard devation (failing: {})".format(np.mean(offset_deviation_fail))
+print "deviation of offset deviation (failing): {}".format(np.std(offset_deviation_fail))
+
+print "average R value (pass): {}".format(np.mean(r_offset_pass))
+print "average R value (fail): {}".format(np.mean(r_offset_fail))
+
+
+ax = plt.subplot2grid((3,2),(0,0))
+plt.plot(.1*np.ones(cqt_scores_pass.shape[0]), cqt_scores_pass, '.', color = 'g')
+plt.plot(.9*np.ones(cqt_scores_fail.shape[0]), cqt_scores_fail, '.', color = 'r')
+plt.title('Passing vs failing scores (Weighted)', fontsize = 'small')
+
+ax = plt.subplot2grid((3,2),(0,1))
+plt.plot(.1*np.ones(cqt_scores_passUW.shape[0]), cqt_scores_passUW, '.', color = 'g')
+plt.plot(.9*np.ones(cqt_scores_failUW.shape[0]), cqt_scores_failUW, '.', color = 'r' )
+plt.title('Passing vs failing scores (Unweighted)', fontsize = 'small')
+
+ax = plt.subplot2grid((3,2),(1,0))
+plt.plot(.1*np.ones(norm_mat_pass.shape[0]), norm_mat_pass, '.', color = 'g')
+plt.plot(.9*np.ones(norm_mat_fail.shape[0]), norm_mat_fail, '.', color = 'r' )
+plt.title('Passing vs failing similarity matrix magnitudes', fontsize = 'small')
+
+ax = plt.subplot2grid((3,2),(1,1))
+plt.plot(.1*np.ones(max_offset_pass.shape[0]), max_offset_pass, '.', color = 'g')
+plt.plot(.9*np.ones(max_offset_fail.shape[0]), max_offset_fail, '.', color = 'r' )
+plt.title('Passing vs failing Maximum Offsets', fontsize = 'small')
+
+ax = plt.subplot2grid((3,2),(2,0))
+plt.plot(.1*np.ones(offset_deviation_pass.shape[0]), offset_deviation_pass, '.', color = 'g')
+plt.plot(.9*np.ones(offset_deviation_fail.shape[0]), offset_deviation_fail, '.', color = 'r' )
+plt.title('Passing vs failing Standard Dev of Offsets', fontsize = 'small')
+
+ax = plt.subplot2grid((3,2),(2,1))
+plt.plot(.1*np.ones(r_offset_pass.shape[0]), r_offset_pass, '.', color = 'g')
+plt.plot(.9*np.ones(r_offset_fail.shape[0]), r_offset_fail, '.', color = 'r' )
+plt.title('Passing vs failing LinReg Offsets', fontsize = 'small')
+plt.savefig('Statistics Of Output.pdf')
