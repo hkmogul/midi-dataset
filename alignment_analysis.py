@@ -59,6 +59,12 @@ def get_offsets(m_aligned, m):
     diff = np.append(diff,np.array([aligned_note_ons[i]-note_ons[i]]))
   return diff
 
+def get_cost_path(p,q,similarity_matrix):
+  cost_path = np.zeros((0,))
+  for i in xrange(p.shape[0]):
+    cost_path = np.append(cost_path, similarity_matrix[p[i],q[i]])
+  return cost_path
+
 def get_regression_stats(m_aligned,m, offsets = None):
   if offsets == None:
     offsets = get_offsets(m_aligned, m)

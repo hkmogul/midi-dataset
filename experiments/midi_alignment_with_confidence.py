@@ -75,6 +75,12 @@ r_offset_fail = np.zeros((0,))
 
 std_err_pass = np.zeros((0,))
 std_err_fail = np.zeros((0,))
+
+
+cost_std_pass = np.zeros((0,))
+cost_std_fail = np.zeros((0,))
+cost_var_pass = np.zeros((0,))
+cost_var_fail = np.zeros((0,))
 path_to_may_30 = '../../CSV_Analysis/5-30-14_Alignment_Results.csv'
 may_30_file = open(path_to_may_30)
 csv_may = csv.reader(may_30_file)
@@ -85,7 +91,7 @@ for row in csv_may:
 
   title_path = vs_filename_to_path(row[0])
   piano_out = os.path.join(BASE_PATH, 'midi-aligned-additive-dpmod-piano',title_path)
-  success = row[2]
+  success = int(row[2])
   mat_out = os.path.join('../../MIDI_Results_5-30',row[0]).replace('.mid', '.mat')+'.mat'
   # load cqt based results
   cqt_mat = scipy.io.loadmat(mat_out)
@@ -118,7 +124,7 @@ for row in csv_may:
   print "Percent difference in paths: {}".format(path_diff*100)
   print "--------------------"
 
-  if int(success) == 1:
+  if success == 1:
     cqt_scores_pass = np.append(cqt_scores_pass, score1)
     cqt_scores_passUW =np.append(cqt_scores_passUW, uw_score1)
     norm_mat_pass = np.append(norm_mat_pass, norm_mat1)
@@ -139,9 +145,9 @@ for row in csv_may:
   offsets = alignment_analysis.get_offsets(aligned_midi, old_midi)
 
 
-  slope, intercept, r, p, stderr = alignment_analysis.get_regression_stats(aligned_midi, old_midi, offsets)
+  slope, intercept, r, p_err, stderr = alignment_analysis.get_regression_stats(aligned_midi, old_midi, offsets)
   print "Maximum offset: {}".format(np.amax(offsets))
-  if int(success) == 1:
+  if success == 1:
     max_offset_pass = np.append(max_offset_pass, np.amax(offsets))
     offset_deviation_pass = np.append(offset_deviation_pass, np.std(offsets))
     r_offset_pass = np.append(r_offset_pass,r)
@@ -154,6 +160,20 @@ for row in csv_may:
 
   print "Slope of regression: {}".format(slope)
   print "R-value of regression: {}".format(r)
+
+
+  # data collection on the cost path
+  cost_path = alignment_analysis.get_cost_path(p1,q1,sim_mat_1)
+  if success == 1:
+    cost_std_pass = np.append(cost_std_pass, np.std(cost_path))
+    cost_var_pass = np.append(cost_var_pass, np.var(cost_path))
+  else:
+    cost_std_fail = np.append(cost_std_fail, np.std(cost_path))
+    cost_var_fail = np.append(cost_var_fail, np.var(cost_path))
+
+
+  
+
 # simple statistics on some of the scores
 print "Passing weighted score statistics:"
 print "Average value: {}".format(np.mean(cqt_scores_pass))
@@ -279,6 +299,20 @@ with PdfPages('Results_Comparison.pdf') as pdf:
 
   plt.plot(.1*np.ones(std_err_pass.shape[0]), std_err_pass, '.', color =  'g', label = 'Passing')
   plt.plot(.9*np.ones(std_err_fail.shape[0]), std_err_fail, '.', color =  'r', label = 'Failing')
-  plt.title('Passing vs failing LinReg Offsets', fontsize = 'small')
+  plt.title('Passing vs failing Standard Error of LinReg', fontsize = 'small')
+  pdf.savefig()
+  plt.close()
+
+  plt.figure(figsize = (4,4))
+  plt.plot(.1*np.ones(cost_std_pass.shape[0]), cost_std_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(.9*np.ones(cost_std_fail.shape[0]), cost_std_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing Standard Error of Cost Path', fontsize = 'small')
+  pdf.savefig()
+  plt.close()
+
+  plt.figure(figsize = (4,4))
+  plt.plot(.1*np.ones(cost_var_pass.shape[0]), cost_var_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(.9*np.ones(cost_var_fail.shape[0]), cost_var_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing Variance of Cost Path', fontsize = 'small')
   pdf.savefig()
   plt.close()
