@@ -15,6 +15,7 @@ import scipy.io
 import csv
 import scipy.stats
 from matplotlib.backends.backend_pdf import PdfPages
+import scipy.signal
 
 
 ''' Start of post analysis of offset information to gain confidence measure in
@@ -81,6 +82,12 @@ cost_std_pass = np.zeros((0,))
 cost_std_fail = np.zeros((0,))
 cost_var_pass = np.zeros((0,))
 cost_var_fail = np.zeros((0,))
+
+filt_cost_std_pass = np.zeros((0,))
+filt_cost_std_fail = np.zeros((0,))
+filt_cost_var_pass = np.zeros((0,))
+filt_cost_var_fail = np.zeros((0,))
+
 path_to_may_30 = '../../CSV_Analysis/5-30-14_Alignment_Results.csv'
 may_30_file = open(path_to_may_30)
 csv_may = csv.reader(may_30_file)
@@ -171,75 +178,103 @@ for row in csv_may:
     cost_std_fail = np.append(cost_std_fail, np.std(cost_path))
     cost_var_fail = np.append(cost_var_fail, np.var(cost_path))
 
+  cost_path_filtered = np.copy(cost_path)
+  cost_path_filtered = scipy.signal.medfilt(cost_path, kernel_size = 9)
 
-  
+  if success == 1:
+    filt_cost_std_pass = np.append(filt_cost_std_pass, np.std(cost_path_filtered))
+    filt_cost_var_pass = np.append(filt_cost_var_pass, np.var(cost_path_filtered))
+  else:
+    filt_cost_std_fail = np.append(filt_cost_std_fail, np.std(cost_path_filtered))
+    filt_cost_var_fail = np.append(filt_cost_var_fail, np.var(cost_path_filtered))
+
+
+  plt.subplot2grid((1,2),(0,0))
+  plt.plot(np.arange(start= 0,stop = cost_path.shape[0]),cost_path)
+  if success == 1:
+    plt.title("ORIGINAL-SUCCESS")
+  else:
+    plt.title("ORIGINAL-FAIL")
+  plt.subplot2grid((1,2),(0,1))
+  plt.plot(np.arange(start= 0,stop = cost_path_filtered.shape[0]),cost_path_filtered)
+
+  if not os.path.exists('../Filter_Check'):
+    os.mkdir('../Filter_Check')
+  if success == 1:
+    plt.title('FILTERED-'+title_path)
+    plt.savefig('../Filter_Check/'+row[0]+'-SUCCESS.pdf')
+    plt.close()
+  else:
+    plt.title('FILTERED-'+title_path)
+    plt.savefig('../Filter_Check/'+row[0]+'-FAIL.pdf')
+    plt.close()
 
 # simple statistics on some of the scores
-print "Passing weighted score statistics:"
-print "Average value: {}".format(np.mean(cqt_scores_pass))
-print "Maximum: {}".format(np.amax(cqt_scores_pass))
-print "Minimum: {}".format(np.amin(cqt_scores_pass))
-print "Standard deviation: {}".format(np.std(cqt_scores_pass))
-print "-----"
-print "Passing unweighted score statistics:"
-print "Average value: {}".format(np.mean(cqt_scores_passUW))
-print "Maximum: {}".format(np.amax(cqt_scores_passUW))
-print "Minimum: {}".format(np.amin(cqt_scores_passUW))
-print "Standard deviation: {}".format(np.std(cqt_scores_passUW))
-print "-----"
-print "Passing similarity matrix magnitude statistics:"
-print "Average value: {}".format(np.mean(norm_mat_pass))
-print "Maximum: {}".format(np.amax(norm_mat_pass))
-print "Minimum: {}".format(np.amin(norm_mat_pass))
-print "Standard deviation: {}".format(np.std(norm_mat_pass))
-print "-----"
-print "Passing difference in piano path statistics:"
-print "Average value: {}".format(np.mean(piano_diff_pass))
-print "Maximum: {}".format(np.amax(piano_diff_pass))
-print "Minimum: {}".format(np.amin(piano_diff_pass))
-print "Standard deviation: {}".format(np.std(piano_diff_pass))
-print "-----------"
-
-print "Failing weighted score statistics:"
-print "Average value: {}".format(np.mean(cqt_scores_fail))
-print "Maximum: {}".format(np.amax(cqt_scores_fail))
-print "Minimum: {}".format(np.amin(cqt_scores_fail))
-print "Standard deviation: {}".format(np.std(cqt_scores_fail))
-print "-----"
-
-print "Failing unweighted score statistics:"
-print "Average value: {}".format(np.mean(cqt_scores_failUW))
-print "Maximum: {}".format(np.amax(cqt_scores_failUW))
-print "Minimum: {}".format(np.amin(cqt_scores_failUW))
-print "Standard deviation: {}".format(np.std(cqt_scores_failUW))
-print "-----"
-
-print "Failing similarity matrix magnitude statistics:"
-print "Average value: {}".format(np.mean(norm_mat_fail))
-print "Maximum: {}".format(np.amax(norm_mat_fail))
-print "Minimum: {}".format(np.amin(norm_mat_fail))
-print "Standard deviation: {}".format(np.std(norm_mat_fail))
-
-print "-----"
-print "Failing difference from piano path statistics:"
-print "Average value: {}".format(np.mean(piano_diff_fail))
-print "Maximum: {}".format(np.amax(piano_diff_fail))
-print "Minimum: {}".format(np.amin(piano_diff_fail))
-print "Standard deviation: {}".format(np.std(piano_diff_fail))
-
-print "-----"
-print "average max offset (passing): {}".format(np.mean(max_offset_pass))
-print "standard deviation max offset (passing) {}".format(np.std(max_offset_pass))
-print "average max offset (failing): {}".format(np.mean(max_offset_fail))
-print "standard deviation max offset (failing) {}".format(np.std(max_offset_fail))
-
-print "average offset standard devation (passing: {})".format(np.mean(offset_deviation_pass))
-print "deviation of offset deviation (passing): {}".format(np.std(offset_deviation_pass))
-print "average offset standard devation (failing: {})".format(np.mean(offset_deviation_fail))
-print "deviation of offset deviation (failing): {}".format(np.std(offset_deviation_fail))
-
-print "average R value (pass): {}".format(np.mean(r_offset_pass))
-print "average R value (fail): {}".format(np.mean(r_offset_fail))
+# print "Passing weighted score statistics:"
+# print "Average value: {}".format(np.mean(cqt_scores_pass))
+# print "Maximum: {}".format(np.amax(cqt_scores_pass))
+# print "Minimum: {}".format(np.amin(cqt_scores_pass))
+# print "Standard deviation: {}".format(np.std(cqt_scores_pass))
+# print "-----"
+# print "Passing unweighted score statistics:"
+# print "Average value: {}".format(np.mean(cqt_scores_passUW))
+# print "Maximum: {}".format(np.amax(cqt_scores_passUW))
+# print "Minimum: {}".format(np.amin(cqt_scores_passUW))
+# print "Standard deviation: {}".format(np.std(cqt_scores_passUW))
+# print "-----"
+# print "Passing similarity matrix magnitude statistics:"
+# print "Average value: {}".format(np.mean(norm_mat_pass))
+# print "Maximum: {}".format(np.amax(norm_mat_pass))
+# print "Minimum: {}".format(np.amin(norm_mat_pass))
+# print "Standard deviation: {}".format(np.std(norm_mat_pass))
+# print "-----"
+# print "Passing difference in piano path statistics:"
+# print "Average value: {}".format(np.mean(piano_diff_pass))
+# print "Maximum: {}".format(np.amax(piano_diff_pass))
+# print "Minimum: {}".format(np.amin(piano_diff_pass))
+# print "Standard deviation: {}".format(np.std(piano_diff_pass))
+# print "-----------"
+#
+# print "Failing weighted score statistics:"
+# print "Average value: {}".format(np.mean(cqt_scores_fail))
+# print "Maximum: {}".format(np.amax(cqt_scores_fail))
+# print "Minimum: {}".format(np.amin(cqt_scores_fail))
+# print "Standard deviation: {}".format(np.std(cqt_scores_fail))
+# print "-----"
+#
+# print "Failing unweighted score statistics:"
+# print "Average value: {}".format(np.mean(cqt_scores_failUW))
+# print "Maximum: {}".format(np.amax(cqt_scores_failUW))
+# print "Minimum: {}".format(np.amin(cqt_scores_failUW))
+# print "Standard deviation: {}".format(np.std(cqt_scores_failUW))
+# print "-----"
+#
+# print "Failing similarity matrix magnitude statistics:"
+# print "Average value: {}".format(np.mean(norm_mat_fail))
+# print "Maximum: {}".format(np.amax(norm_mat_fail))
+# print "Minimum: {}".format(np.amin(norm_mat_fail))
+# print "Standard deviation: {}".format(np.std(norm_mat_fail))
+#
+# print "-----"
+# print "Failing difference from piano path statistics:"
+# print "Average value: {}".format(np.mean(piano_diff_fail))
+# print "Maximum: {}".format(np.amax(piano_diff_fail))
+# print "Minimum: {}".format(np.amin(piano_diff_fail))
+# print "Standard deviation: {}".format(np.std(piano_diff_fail))
+#
+# print "-----"
+# print "average max offset (passing): {}".format(np.mean(max_offset_pass))
+# print "standard deviation max offset (passing) {}".format(np.std(max_offset_pass))
+# print "average max offset (failing): {}".format(np.mean(max_offset_fail))
+# print "standard deviation max offset (failing) {}".format(np.std(max_offset_fail))
+#
+# print "average offset standard devation (passing: {})".format(np.mean(offset_deviation_pass))
+# print "deviation of offset deviation (passing): {}".format(np.std(offset_deviation_pass))
+# print "average offset standard devation (failing: {})".format(np.mean(offset_deviation_fail))
+# print "deviation of offset deviation (failing): {}".format(np.std(offset_deviation_fail))
+#
+# print "average R value (pass): {}".format(np.mean(r_offset_pass))
+# print "average R value (fail): {}".format(np.mean(r_offset_fail))
 
 with PdfPages('Results_Comparison.pdf') as pdf:
 
@@ -314,5 +349,20 @@ with PdfPages('Results_Comparison.pdf') as pdf:
   plt.plot(.1*np.ones(cost_var_pass.shape[0]), cost_var_pass, '.', color =  'g', label = 'Passing')
   plt.plot(.9*np.ones(cost_var_fail.shape[0]), cost_var_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing Variance of Cost Path', fontsize = 'small')
+  pdf.savefig()
+  plt.close()
+
+
+  plt.figure(figsize = (4,4))
+  plt.plot(.1*np.ones(filt_cost_std_pass.shape[0]), filt_cost_std_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(.9*np.ones(filt_cost_std_fail.shape[0]), filt_cost_std_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing Standard Error of Filtered Cost Path', fontsize = 'small')
+  pdf.savefig()
+  plt.close()
+
+  plt.figure(figsize = (4,4))
+  plt.plot(.1*np.ones(filt_cost_var_pass.shape[0]), filt_cost_var_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(.9*np.ones(filt_cost_var_fail.shape[0]), filt_cost_var_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing Variance of Filtered Cost Path', fontsize = 'small')
   pdf.savefig()
   plt.close()
