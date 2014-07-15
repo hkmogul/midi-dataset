@@ -14,6 +14,8 @@ import alignment_analysis
 import scipy.io
 import csv
 import scipy.stats
+from matplotlib.backends.backend_pdf import PdfPages
+
 
 ''' Start of post analysis of offset information to gain confidence measure in
     running alignment. Ultimate goal is to have failing alignments come out with
@@ -70,6 +72,9 @@ offset_deviation_fail = np.zeros((0,))
 
 r_offset_pass = np.zeros((0,))
 r_offset_fail = np.zeros((0,))
+
+std_err_pass = np.zeros((0,))
+std_err_fail = np.zeros((0,))
 path_to_may_30 = '../../CSV_Analysis/5-30-14_Alignment_Results.csv'
 may_30_file = open(path_to_may_30)
 csv_may = csv.reader(may_30_file)
@@ -140,10 +145,13 @@ for row in csv_may:
     max_offset_pass = np.append(max_offset_pass, np.amax(offsets))
     offset_deviation_pass = np.append(offset_deviation_pass, np.std(offsets))
     r_offset_pass = np.append(r_offset_pass,r)
+    std_err_pass = np.append(std_err_pass, stderr)
   else:
     max_offset_fail = np.append(max_offset_fail, np.amax(offsets))
     offset_deviation_fail = np.append(offset_deviation_fail, np.std(offsets))
     r_offset_fail = np.append(r_offset_fail, r)
+    std_err_fail = np.append(std_err_fail, stderr)
+
   print "Slope of regression: {}".format(slope)
   print "R-value of regression: {}".format(r)
 # simple statistics on some of the scores
@@ -213,34 +221,64 @@ print "deviation of offset deviation (failing): {}".format(np.std(offset_deviati
 print "average R value (pass): {}".format(np.mean(r_offset_pass))
 print "average R value (fail): {}".format(np.mean(r_offset_fail))
 
+with PdfPages('Results_Comparison.pdf') as pdf:
 
-ax = plt.subplot2grid((3,2),(0,0))
-plt.plot(.1*np.ones(cqt_scores_pass.shape[0]), cqt_scores_pass, '.', color = 'g')
-plt.plot(.9*np.ones(cqt_scores_fail.shape[0]), cqt_scores_fail, '.', color = 'r')
-plt.title('Passing vs failing scores (Weighted)', fontsize = 'small')
+  # ax = plt.subplot2grid((3,2),(0,0))
+  plt.figure(figsize = (4,4))
+  plt.plot(.1*np.ones(cqt_scores_pass.shape[0]), cqt_scores_pass, '.', color = 'g', label = 'Passing')
+  plt.plot(.9*np.ones(cqt_scores_fail.shape[0]), cqt_scores_fail, '.', color = 'r', label = 'Failing' )
+  plt.title('Passing vs failing scores (Weighted)', fontsize = 'small')
+  pdf.savefig()
+  plt.close()
+  # ax = plt.subplot2grid((3,2),(0,1))
+  plt.figure(figsize = (4,4))
 
-ax = plt.subplot2grid((3,2),(0,1))
-plt.plot(.1*np.ones(cqt_scores_passUW.shape[0]), cqt_scores_passUW, '.', color = 'g')
-plt.plot(.9*np.ones(cqt_scores_failUW.shape[0]), cqt_scores_failUW, '.', color = 'r' )
-plt.title('Passing vs failing scores (Unweighted)', fontsize = 'small')
+  plt.plot(.1*np.ones(cqt_scores_passUW.shape[0]), cqt_scores_passUW, '.', color =  'g', label = 'Passing')
+  plt.plot(.9*np.ones(cqt_scores_failUW.shape[0]), cqt_scores_failUW, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing scores (Unweighted)', fontsize = 'small')
+  pdf.savefig()
+  plt.close()
 
-ax = plt.subplot2grid((3,2),(1,0))
-plt.plot(.1*np.ones(norm_mat_pass.shape[0]), norm_mat_pass, '.', color = 'g')
-plt.plot(.9*np.ones(norm_mat_fail.shape[0]), norm_mat_fail, '.', color = 'r' )
-plt.title('Passing vs failing similarity matrix magnitudes', fontsize = 'small')
+  # ax = plt.subplot2grid((3,2),(1,0))
+  plt.figure(figsize = (4,4))
 
-ax = plt.subplot2grid((3,2),(1,1))
-plt.plot(.1*np.ones(max_offset_pass.shape[0]), max_offset_pass, '.', color = 'g')
-plt.plot(.9*np.ones(max_offset_fail.shape[0]), max_offset_fail, '.', color = 'r' )
-plt.title('Passing vs failing Maximum Offsets', fontsize = 'small')
+  plt.plot(.1*np.ones(norm_mat_pass.shape[0]), norm_mat_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(.9*np.ones(norm_mat_fail.shape[0]), norm_mat_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing similarity matrix magnitudes', fontsize = 'small')
+  pdf.savefig()
+  plt.close()
 
-ax = plt.subplot2grid((3,2),(2,0))
-plt.plot(.1*np.ones(offset_deviation_pass.shape[0]), offset_deviation_pass, '.', color = 'g')
-plt.plot(.9*np.ones(offset_deviation_fail.shape[0]), offset_deviation_fail, '.', color = 'r' )
-plt.title('Passing vs failing Standard Dev of Offsets', fontsize = 'small')
+  # ax = plt.subplot2grid((3,2),(1,1))
+  plt.figure(figsize = (4,4))
 
-ax = plt.subplot2grid((3,2),(2,1))
-plt.plot(.1*np.ones(r_offset_pass.shape[0]), r_offset_pass, '.', color = 'g')
-plt.plot(.9*np.ones(r_offset_fail.shape[0]), r_offset_fail, '.', color = 'r' )
-plt.title('Passing vs failing LinReg Offsets', fontsize = 'small')
-plt.savefig('Statistics Of Output.pdf')
+  plt.plot(.1*np.ones(max_offset_pass.shape[0]), max_offset_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(.9*np.ones(max_offset_fail.shape[0]), max_offset_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing Maximum Offsets', fontsize = 'small')
+  pdf.savefig()
+  plt.close()
+
+  # ax = plt.subplot2grid((3,2),(2,0))
+  plt.figure(figsize = (4,4))
+
+  plt.plot(.1*np.ones(offset_deviation_pass.shape[0]), offset_deviation_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(.9*np.ones(offset_deviation_fail.shape[0]), offset_deviation_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing Standard Dev of Offsets', fontsize = 'small')
+  pdf.savefig()
+  plt.close()
+
+  # ax = plt.subplot2grid((3,2),(2,1))plt.figure(figsize = (4,4))
+  plt.figure(figsize = (4,4))
+
+  plt.plot(.1*np.ones(r_offset_pass.shape[0]), r_offset_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(.9*np.ones(r_offset_fail.shape[0]), r_offset_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing LinReg Offsets', fontsize = 'small')
+  pdf.savefig()
+  plt.close()
+
+  plt.figure(figsize = (4,4))
+
+  plt.plot(.1*np.ones(std_err_pass.shape[0]), std_err_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(.9*np.ones(std_err_fail.shape[0]), std_err_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing LinReg Offsets', fontsize = 'small')
+  pdf.savefig()
+  plt.close()
