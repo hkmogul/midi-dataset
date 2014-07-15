@@ -4,6 +4,7 @@ import numpy as np
 import sys
 import scipy.io
 import pretty_midi
+import scipy.stats
 ''' Module of functions for running comparisons of different paths '''
 
 def compare_paths(p1,q1,p2,q2, percent_in = 0):
@@ -57,3 +58,13 @@ def get_offsets(m_aligned, m):
   for i in xrange(last):
     diff = np.append(diff,np.array([aligned_note_ons[i]-note_ons[i]]))
   return diff
+
+def get_regression_stats(m_aligned,m, offsets = None):
+  if offsets == None:
+    offsets = get_offsets(m_aligned, m)
+
+  note_ons = np.array([note.start for instrument in m.instruments for note in instrument.events])
+  aligned_note_ons = np.array([note.start for instrument in m_aligned.instruments for note in instrument.events])
+  last = min(note_ons.shape[0],aligned_note_ons.shape[0])
+  slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(note_ons[0:(last)],offsets)
+  return slope, intercept, r_value, p_value, std_err
