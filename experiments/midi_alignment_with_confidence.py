@@ -115,21 +115,21 @@ for row in csv_may:
   norm_mat1 = np.sum(sim_mat_1)/(sim_mat_1.shape[0]*sim_mat_1.shape[1])
   print "Normalized similarity matrix magnitude: {}".format(norm_mat1)
   print "-----"
-  print "Analyzing piano roll information."
+  # print "Analyzing piano roll information."
   piano_mat = scipy.io.loadmat(piano_out)
   p2 = piano_mat['p'][0,:]
   q2 = piano_mat['q'][0,:]
   sim_mat_2 = piano_mat['similarity_matrix']
   score2 = piano_mat['score'][0,0]
 
-  print "Weighted score (piano):{}".format(score2)
+  # print "Weighted score (piano):{}".format(score2)
   uw_score2 = alignment_analysis.get_unweighted_score(p2,q2,sim_mat_2)
-  print "Unweighted score (piano):{}".format(uw_score2)
+  # print "Unweighted score (piano):{}".format(uw_score2)
   norm_mat2 = np.sum(sim_mat_2)/(sim_mat_2.shape[0]*sim_mat_2.shape[1])
-  print "Normalized similarity matrix magnitude: {}".format(norm_mat2)
+  # print "Normalized similarity matrix magnitude: {}".format(norm_mat2)
   path_diff = alignment_analysis.compare_paths(p1,q1,p2,q2)
-  print "Percent difference in paths: {}".format(path_diff*100)
-  print "--------------------"
+  # print "Percent difference in paths: {}".format(path_diff*100)
+  # print "--------------------"
 
   if success == 1:
     cqt_scores_pass = np.append(cqt_scores_pass, score1)
@@ -153,7 +153,7 @@ for row in csv_may:
 
 
   slope, intercept, r, p_err, stderr = alignment_analysis.get_regression_stats(aligned_midi, old_midi, offsets)
-  print "Maximum offset: {}".format(np.amax(offsets))
+  # print "Maximum offset: {}".format(np.amax(offsets))
   if success == 1:
     max_offset_pass = np.append(max_offset_pass, np.amax(offsets))
     offset_deviation_pass = np.append(offset_deviation_pass, np.std(offsets))
@@ -165,8 +165,8 @@ for row in csv_may:
     r_offset_fail = np.append(r_offset_fail, r)
     std_err_fail = np.append(std_err_fail, stderr)
 
-  print "Slope of regression: {}".format(slope)
-  print "R-value of regression: {}".format(r)
+  # print "Slope of regression: {}".format(slope)
+  # print "R-value of regression: {}".format(r)
 
 
   # data collection on the cost path
@@ -179,7 +179,7 @@ for row in csv_may:
     cost_var_fail = np.append(cost_var_fail, np.var(cost_path))
 
   cost_path_filtered = np.copy(cost_path)
-  cost_path_filtered = scipy.signal.medfilt(cost_path, kernel_size = 9)
+  cost_path_filtered = scipy.signal.medfilt(cost_path, kernel_size = 19)
 
   if success == 1:
     filt_cost_std_pass = np.append(filt_cost_std_pass, np.std(cost_path_filtered))
@@ -281,16 +281,18 @@ with PdfPages('Results_Comparison.pdf') as pdf:
   # ax = plt.subplot2grid((3,2),(0,0))
   plt.figure(figsize = (4,4))
   plt.plot(.1*np.ones(cqt_scores_pass.shape[0]), cqt_scores_pass, '.', color = 'g', label = 'Passing')
-  plt.plot(.9*np.ones(cqt_scores_fail.shape[0]), cqt_scores_fail, '.', color = 'r', label = 'Failing' )
+  plt.plot(1.0*np.ones(cqt_scores_fail.shape[0]), cqt_scores_fail, '.', color = 'r', label = 'Failing' )
   plt.title('Passing vs failing scores (Weighted)', fontsize = 'small')
+  plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
   # ax = plt.subplot2grid((3,2),(0,1))
   plt.figure(figsize = (4,4))
 
   plt.plot(.1*np.ones(cqt_scores_passUW.shape[0]), cqt_scores_passUW, '.', color =  'g', label = 'Passing')
-  plt.plot(.9*np.ones(cqt_scores_failUW.shape[0]), cqt_scores_failUW, '.', color =  'r', label = 'Failing')
+  plt.plot(1.0*np.ones(cqt_scores_failUW.shape[0]), cqt_scores_failUW, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing scores (Unweighted)', fontsize = 'small')
+  plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
 
@@ -298,8 +300,10 @@ with PdfPages('Results_Comparison.pdf') as pdf:
   plt.figure(figsize = (4,4))
 
   plt.plot(.1*np.ones(norm_mat_pass.shape[0]), norm_mat_pass, '.', color =  'g', label = 'Passing')
-  plt.plot(.9*np.ones(norm_mat_fail.shape[0]), norm_mat_fail, '.', color =  'r', label = 'Failing')
+  plt.plot(1.0*np.ones(norm_mat_fail.shape[0]), norm_mat_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing similarity matrix magnitudes', fontsize = 'small')
+  plt.xlim([0,1.1])
+
   pdf.savefig()
   plt.close()
 
@@ -307,8 +311,9 @@ with PdfPages('Results_Comparison.pdf') as pdf:
   plt.figure(figsize = (4,4))
 
   plt.plot(.1*np.ones(max_offset_pass.shape[0]), max_offset_pass, '.', color =  'g', label = 'Passing')
-  plt.plot(.9*np.ones(max_offset_fail.shape[0]), max_offset_fail, '.', color =  'r', label = 'Failing')
+  plt.plot(1.0*np.ones(max_offset_fail.shape[0]), max_offset_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing Maximum Offsets', fontsize = 'small')
+  plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
 
@@ -316,8 +321,9 @@ with PdfPages('Results_Comparison.pdf') as pdf:
   plt.figure(figsize = (4,4))
 
   plt.plot(.1*np.ones(offset_deviation_pass.shape[0]), offset_deviation_pass, '.', color =  'g', label = 'Passing')
-  plt.plot(.9*np.ones(offset_deviation_fail.shape[0]), offset_deviation_fail, '.', color =  'r', label = 'Failing')
+  plt.plot(1.0*np.ones(offset_deviation_fail.shape[0]), offset_deviation_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing Standard Dev of Offsets', fontsize = 'small')
+  plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
 
@@ -325,44 +331,50 @@ with PdfPages('Results_Comparison.pdf') as pdf:
   plt.figure(figsize = (4,4))
 
   plt.plot(.1*np.ones(r_offset_pass.shape[0]), r_offset_pass, '.', color =  'g', label = 'Passing')
-  plt.plot(.9*np.ones(r_offset_fail.shape[0]), r_offset_fail, '.', color =  'r', label = 'Failing')
+  plt.plot(1.0*np.ones(r_offset_fail.shape[0]), r_offset_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing LinReg Offsets', fontsize = 'small')
+  plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
 
   plt.figure(figsize = (4,4))
 
   plt.plot(.1*np.ones(std_err_pass.shape[0]), std_err_pass, '.', color =  'g', label = 'Passing')
-  plt.plot(.9*np.ones(std_err_fail.shape[0]), std_err_fail, '.', color =  'r', label = 'Failing')
+  plt.plot(1.0*np.ones(std_err_fail.shape[0]), std_err_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing Standard Error of LinReg', fontsize = 'small')
+  plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
 
   plt.figure(figsize = (4,4))
   plt.plot(.1*np.ones(cost_std_pass.shape[0]), cost_std_pass, '.', color =  'g', label = 'Passing')
-  plt.plot(.9*np.ones(cost_std_fail.shape[0]), cost_std_fail, '.', color =  'r', label = 'Failing')
+  plt.plot(1.0*np.ones(cost_std_fail.shape[0]), cost_std_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing Standard Error of Cost Path', fontsize = 'small')
+  plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
 
   plt.figure(figsize = (4,4))
   plt.plot(.1*np.ones(cost_var_pass.shape[0]), cost_var_pass, '.', color =  'g', label = 'Passing')
-  plt.plot(.9*np.ones(cost_var_fail.shape[0]), cost_var_fail, '.', color =  'r', label = 'Failing')
+  plt.plot(1.0*np.ones(cost_var_fail.shape[0]), cost_var_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing Variance of Cost Path', fontsize = 'small')
+  plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
 
 
   plt.figure(figsize = (4,4))
   plt.plot(.1*np.ones(filt_cost_std_pass.shape[0]), filt_cost_std_pass, '.', color =  'g', label = 'Passing')
-  plt.plot(.9*np.ones(filt_cost_std_fail.shape[0]), filt_cost_std_fail, '.', color =  'r', label = 'Failing')
+  plt.plot(1.0*np.ones(filt_cost_std_fail.shape[0]), filt_cost_std_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing Standard Error of Filtered Cost Path', fontsize = 'small')
+  plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
 
   plt.figure(figsize = (4,4))
   plt.plot(.1*np.ones(filt_cost_var_pass.shape[0]), filt_cost_var_pass, '.', color =  'g', label = 'Passing')
-  plt.plot(.9*np.ones(filt_cost_var_fail.shape[0]), filt_cost_var_fail, '.', color =  'r', label = 'Failing')
+  plt.plot(1.0*np.ones(filt_cost_var_fail.shape[0]), filt_cost_var_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing Variance of Filtered Cost Path', fontsize = 'small')
+  plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
