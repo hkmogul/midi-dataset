@@ -1,4 +1,3 @@
-import csv
 import os
 import numpy as np
 import sys
@@ -77,3 +76,38 @@ def get_regression_stats(m_aligned,m, offsets = None):
   last = min(note_ons.shape[0],aligned_note_ons.shape[0])
   slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(note_ons[0:(last)],offsets)
   return slope, intercept, r_value, p_value, std_err
+
+
+def get_non_diagonal_steps(p,q):
+  ''' Returns number of non-diagonal steps in path
+  both horizontal and vertical are returned as 2 different values '''
+
+  # first, get number of horizontal steps from p
+  horiz = 0
+  current = p[0]
+  for i in xrange(1,p.shape[0]):
+    if p[i] == current:
+      horiz += 1
+    else:
+      current = p[i]
+
+  # get verticals the same way
+  vert = 0
+  current = q[0]
+  for j in xrange(1, q.shape[0]):
+    if q[j] == current:
+      vert +=1
+    else:
+      current = q[j]
+  return horiz, vert
+
+def parabola_fit(cost_path):
+  ''' Returns polynomial coefficients and fit value for parabolic fit of data '''
+  x = np.arange(start = 0, stop = cost_path.shape[0])
+  p = np.polyfit(x =x, y =cost_path, deg = 2)
+  # build residuals because apparently numpy just gives the sum of them, and actual parabola because why not
+  parab = p[2]+p[1]*x+p[0]*x**2
+  residuals = np.zeros(x.shape)
+  for i in xrange(residuals.shape[0]):
+    residuals[i] = cost_path[i]-parab[i]
+  return p, parab,residuals
