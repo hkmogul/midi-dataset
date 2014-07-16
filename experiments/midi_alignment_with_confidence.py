@@ -54,7 +54,10 @@ def to_chroma_npy(filename):
     return os.path.splitext(filename)[0]+'-chroma.npy'
 
 
-
+size = int(raw_input("Size of median filter (must be odd)?"))
+if size % 2 == 0:
+  size = size+1
+  print "Size was even, incremented by 1 to fix."
 BASE_PATH = '../data/cal500_txt/'
 cqt_scores_pass  = np.zeros((0,))
 cqt_scores_fail = np.zeros((0,))
@@ -179,7 +182,8 @@ for row in csv_may:
     cost_var_fail = np.append(cost_var_fail, np.var(cost_path))
 
   cost_path_filtered = np.copy(cost_path)
-  cost_path_filtered = scipy.signal.medfilt(cost_path, kernel_size = 19)
+
+  cost_path_filtered = scipy.signal.medfilt(cost_path, kernel_size = size)
 
   if success == 1:
     filt_cost_std_pass = np.append(filt_cost_std_pass, np.std(cost_path_filtered))
@@ -198,15 +202,15 @@ for row in csv_may:
   plt.subplot2grid((1,2),(0,1))
   plt.plot(np.arange(start= 0,stop = cost_path_filtered.shape[0]),cost_path_filtered)
 
-  if not os.path.exists('../Filter_Check'):
-    os.mkdir('../Filter_Check')
+  if not os.path.exists('../Filter_Check-'+str(size)):
+    os.mkdir('../Filter_Check-'+str(size))
   if success == 1:
     plt.title('FILTERED-'+title_path)
-    plt.savefig('../Filter_Check/'+row[0]+'-SUCCESS.pdf')
+    plt.savefig(os.path.join('../Filter_Check-'+str(size),row[0]+'-SUCCESS.pdf'))
     plt.close()
   else:
     plt.title('FILTERED-'+title_path)
-    plt.savefig('../Filter_Check/'+row[0]+'-FAIL.pdf')
+    plt.savefig(os.path.join('../Filter_Check-'+str(size),row[0]+'-FAIL.pdf'))
     plt.close()
 
 # simple statistics on some of the scores
@@ -276,7 +280,7 @@ for row in csv_may:
 # print "average R value (pass): {}".format(np.mean(r_offset_pass))
 # print "average R value (fail): {}".format(np.mean(r_offset_fail))
 
-with PdfPages('Results_Comparison.pdf') as pdf:
+with PdfPages('Results_Comparison-'+str(size)+'.pdf') as pdf:
 
   # ax = plt.subplot2grid((3,2),(0,0))
   plt.figure(figsize = (4,4))
@@ -378,3 +382,4 @@ with PdfPages('Results_Comparison.pdf') as pdf:
   plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
+print np.percentile(filt_cost_var_pass, 90)

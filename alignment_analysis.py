@@ -41,6 +41,7 @@ def compare_paths(p1,q1,p2,q2, percent_in = 0):
 
 
 def get_unweighted_score(p,q,similarity_matrix):
+  ''' Calculates what the score would have been without the penalty '''
   score = 0
   for i in xrange(p.shape[0]):
     index1 = p[i]
@@ -50,7 +51,7 @@ def get_unweighted_score(p,q,similarity_matrix):
 
 
 def get_offsets(m_aligned, m):
-
+  ''' Forms and returns alignment offsets based on the adjusted midi and the original '''
   note_ons = np.array([note.start for instrument in m.instruments for note in instrument.events])
   aligned_note_ons = np.array([note.start for instrument in m_aligned.instruments for note in instrument.events])
   diff = np.array([[]])
@@ -60,12 +61,14 @@ def get_offsets(m_aligned, m):
   return diff
 
 def get_cost_path(p,q,similarity_matrix):
+  ''' Forms and returns the cost per step of alignment path '''
   cost_path = np.zeros((0,))
   for i in xrange(p.shape[0]):
     cost_path = np.append(cost_path, similarity_matrix[p[i],q[i]])
   return cost_path
 
 def get_regression_stats(m_aligned,m, offsets = None):
+  ''' Used for performing linear regression stats on the aligned offsets '''
   if offsets == None:
     offsets = get_offsets(m_aligned, m)
 
