@@ -414,9 +414,22 @@ conditionS = cqt_scores_pass < .04099
 conditionSF = cqt_scores_fail < .04099
 exSP = np.extract(conditionS, cqt_scores_pass)
 exSF = np.extract(conditionSF, cqt_scores_fail)
+
+
+condition_origP = orig_res_pass < .000178
+condition_origF = orig_res_fail < .000178
+exRP = np.extract(condition_origP, orig_res_pass)
+exRF = np.extract(condition_origF, orig_res_fail)
+
+arg1 =  np.argwhere(condition_origP)
+arg2 =  np.argwhere(condition)
+inCommon = np.intersect1d(arg1,arg2)
+print inCommon.shape
 print "Percentage of passing variances greater than .00014: {}".format((float(exP.shape[0])/filt_cost_var_pass.shape[0])*100)
 print "Percentage of failing variances greater than .00014: {}".format((float(exF.shape[0])/filt_cost_var_fail.shape[0])*100)
 print np.percentile(filt_cost_var_pass, 90)
 print "Percentage of passing scores less than .04099: {}".format((float(exSP.shape[0])/cqt_scores_pass.shape[0])*100)
 print "Percentage of failing scores less than .04099: {}".format((float(exSF.shape[0])/cqt_scores_fail.shape[0])*100)
 print "Minimum value of variance of Parab Resid applied to Original (Failing): {}".format(np.amin(orig_res_fail))
+print "Percentage of Variances of Residuals applied to original cost paths < .000178 (passing) : {}".format((float(exRP.shape[0])/orig_res_pass.shape[0])*100)
+print "Percentage of Variances of Residuals applied to original cost paths < .000178 (failing) : {}".format((float(exRF.shape[0])/orig_res_fail.shape[0])*100)
