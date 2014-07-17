@@ -75,7 +75,7 @@ def to_chroma_npy(filename):
 
 def make_midi_cqt(midi_filename, piano, chroma, midi_info = None):
   if midi_info is None:
-    midi_info = pretty_midi.PrettyMIDI(midi.read_midifile(midi_filename))
+    midi_info = pretty_midi.PrettyMIDI(midi_filename)
   if piano:
     print "Generating CQT with piano roll"
     midi_gram = align_midi.midi_to_piano_cqt(midi_info)
@@ -116,7 +116,7 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
     '''
     # Load in the corresponding midi file in the midi directory, and return if there is a problem loading it
     try:
-        m = pretty_midi.PrettyMIDI(midi.read_midifile(midi_filename))
+        m = pretty_midi.PrettyMIDI(midi_filename)
     except:
         print "Error loading {}".format(midi_filename)
         return
@@ -183,11 +183,11 @@ def align_one_file(mp3_filename, midi_filename, output_midi_filename, output_dia
       print "Creating CQT for {}".format(os.path.split(midi_filename)[1])
       # Generate synthetic MIDI CQT
       midi_gram = make_midi_cqt(midi_filename, piano,chroma, m)
-
-    # midi_gram = align_midi.accentuate_onsets(midi_gram)
-    midi_gram = align_midi.piano_roll_fuzz(midi_gram)
-    # midi_gram = align_midi.clean_audio_gram(midi_gram, threshold = np.percentile(midi_gram,40))
-    midi_gram = librosa.util.normalize(midi_gram, axis = 0)
+    if piano:
+      # midi_gram = align_midi.accentuate_onsets(midi_gram)
+      midi_gram = align_midi.piano_roll_fuzz(midi_gram)
+      # midi_gram = align_midi.clean_audio_gram(midi_gram, threshold = np.percentile(midi_gram,40))
+      midi_gram = librosa.util.normalize(midi_gram, axis = 0)
 
     # Compute beats
     midi_beats, bpm = align_midi.midi_beat_track(m)
