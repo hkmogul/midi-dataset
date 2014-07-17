@@ -107,7 +107,8 @@ def parabola_fit(cost_path):
   p = np.polyfit(x =x, y =cost_path, deg = 2)
   # build residuals because apparently numpy just gives the sum of them, and actual parabola because why not
   parab = p[2]+p[1]*x+p[0]*x**2
-  residuals = np.zeros(x.shape)
-  for i in xrange(residuals.shape[0]):
-    residuals[i] = cost_path[i]-parab[i]
+  # residuals = np.zeros(x.shape)
+  residuals = np.subtract(cost_path, parab)
+  # for i in xrange(residuals.shape[0]):
+  #   residuals[i] = cost_path[i]-parab[i]
   return p, parab,residuals

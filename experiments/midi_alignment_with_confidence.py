@@ -95,6 +95,12 @@ filt_cost_var_fail = np.zeros((0,))
 # parabolic regression info -  will store variance of residuals
 para_res_pass = np.zeros((0,))
 para_res_fail = np.zeros((0,))
+orig_res_pass = np.zeros((0,))
+orig_res_fail = np.zeros((0,))
+
+# info on nondiagonal steps
+nondiag_pass = np.zeros((0,))
+nondiag_fail = np.zeros((0,))
 
 path_to_may_30 = '../../CSV_Analysis/5-30-14_Alignment_Results.csv'
 may_30_file = open(path_to_may_30)
@@ -199,8 +205,11 @@ for row in csv_may:
 
 
   p, parab,residuals = alignment_analysis.parabola_fit(cost_path_filtered)
-  print "VARIANCE {}".format(np.var(residuals))
-  print residuals.shape
+
+  # build residuals of applying parab to original cost path
+  res_original = np.subtract(cost_path, parab)
+
+
   x = np.arange(start= 0,stop = cost_path_filtered.shape[0])
   # print p
   # parab = p[0]*x**2+ p[1]*x+p[2]
@@ -223,13 +232,22 @@ for row in csv_may:
     plt.title('FILTERED-'+title_path)
     plt.savefig(os.path.join('../Filter_Check-'+str(size),row[0]+'-FAIL.pdf'))
     plt.close()
+  horiz, vert = alignment_analysis.get_non_diagonal_steps(p1,q1)
+  nondag = horiz+vert
+
 
 
   # save info on residuals
   if success == 1:
     para_res_pass = np.append(para_res_pass, np.var(residuals))
+    nondiag_pass = np.append(nondiag_pass, nondag)
+    orig_res_pass = np.append(orig_res_pass, np.var(res_original))
   else:
     para_res_fail = np.append(para_res_fail, np.var(residuals))
+    nondiag_fail = np.append(nondiag_fail, nondag)
+    orig_res_fail = np.append(orig_res_fail, np.var(res_original))
+
+
 # simple statistics on some of the scores
 # print "Passing weighted score statistics:"
 # print "Average value: {}".format(np.mean(cqt_scores_pass))
@@ -334,6 +352,8 @@ with PdfPages('Results_Comparison-'+str(size)+'.pdf') as pdf:
   plt.plot(.1*np.ones(max_offset_pass.shape[0]), max_offset_pass, '.', color =  'g', label = 'Passing')
   plt.plot(1.0*np.ones(max_offset_fail.shape[0]), max_offset_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing Maximum Offsets', fontsize = 'small')
+  plt.legend()
+
   plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
@@ -344,16 +364,19 @@ with PdfPages('Results_Comparison-'+str(size)+'.pdf') as pdf:
   plt.plot(.1*np.ones(offset_deviation_pass.shape[0]), offset_deviation_pass, '.', color =  'g', label = 'Passing')
   plt.plot(1.0*np.ones(offset_deviation_fail.shape[0]), offset_deviation_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing Standard Dev of Offsets', fontsize = 'small')
+  plt.legend()
+
   plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
 
   # ax = plt.subplot2grid((3,2),(2,1))plt.figure(figsize = (4,4))
   plt.figure(figsize = (4,4))
-
   plt.plot(.1*np.ones(r_offset_pass.shape[0]), r_offset_pass, '.', color =  'g', label = 'Passing')
   plt.plot(1.0*np.ones(r_offset_fail.shape[0]), r_offset_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing LinReg Offsets', fontsize = 'small')
+  plt.legend()
+
   plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
@@ -363,6 +386,8 @@ with PdfPages('Results_Comparison-'+str(size)+'.pdf') as pdf:
   plt.plot(.1*np.ones(std_err_pass.shape[0]), std_err_pass, '.', color =  'g', label = 'Passing')
   plt.plot(1.0*np.ones(std_err_fail.shape[0]), std_err_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing Standard Error of LinReg', fontsize = 'small')
+  plt.legend()
+
   plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
@@ -371,6 +396,8 @@ with PdfPages('Results_Comparison-'+str(size)+'.pdf') as pdf:
   plt.plot(.1*np.ones(cost_std_pass.shape[0]), cost_std_pass, '.', color =  'g', label = 'Passing')
   plt.plot(1.0*np.ones(cost_std_fail.shape[0]), cost_std_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing Standard Error of Cost Path', fontsize = 'small')
+  plt.legend()
+
   plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
@@ -379,6 +406,8 @@ with PdfPages('Results_Comparison-'+str(size)+'.pdf') as pdf:
   plt.plot(.1*np.ones(cost_var_pass.shape[0]), cost_var_pass, '.', color =  'g', label = 'Passing')
   plt.plot(1.0*np.ones(cost_var_fail.shape[0]), cost_var_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing Variance of Cost Path', fontsize = 'small')
+  plt.legend()
+
   plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
@@ -388,6 +417,8 @@ with PdfPages('Results_Comparison-'+str(size)+'.pdf') as pdf:
   plt.plot(.1*np.ones(filt_cost_std_pass.shape[0]), filt_cost_std_pass, '.', color =  'g', label = 'Passing')
   plt.plot(1.0*np.ones(filt_cost_std_fail.shape[0]), filt_cost_std_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing Standard Error of Filtered Cost Path', fontsize = 'small')
+  plt.legend()
+
   plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
@@ -396,6 +427,8 @@ with PdfPages('Results_Comparison-'+str(size)+'.pdf') as pdf:
   plt.plot(.1*np.ones(filt_cost_var_pass.shape[0]), filt_cost_var_pass, '.', color =  'g', label = 'Passing')
   plt.plot(1.0*np.ones(filt_cost_var_fail.shape[0]), filt_cost_var_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing Variance of Filtered Cost Path', fontsize = 'small')
+  plt.legend()
+
   plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
@@ -403,15 +436,45 @@ with PdfPages('Results_Comparison-'+str(size)+'.pdf') as pdf:
   plt.figure(figsize = (4,4))
   plt.plot(.1*np.ones(para_res_pass.shape[0]), para_res_pass, '.', color =  'g', label = 'Passing')
   plt.plot(1.0*np.ones(para_res_fail.shape[0]), para_res_fail, '.', color =  'r', label = 'Failing')
-  plt.title('Passing vs failing Variance of Parabolic Residuals', fontsize = 'small')
+  plt.title('Passing vs failing Mean of Parabolic Residuals', fontsize = 'small')
+  plt.xlim([0,1.1])
+  plt.legend()
+
+  pdf.savefig()
+  plt.close()
+
+  plt.figure(figsize = (4,4))
+  plt.plot(.1*np.ones(nondiag_pass.shape[0]), nondiag_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(1.0*np.ones(nondiag_fail.shape[0]), nondiag_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing Amount of NonDiagonal Steps', fontsize = 'small')
+  plt.legend()
+
   plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
 
-condition = filt_cost_var_pass > .00015
-conditionF = filt_cost_var_fail > .00015
+
+  plt.figure(figsize = (4,4))
+  plt.plot(.1*np.ones(nondiag_pass.shape[0]), orig_res_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(1.0*np.ones(nondiag_fail.shape[0]), orig_res_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing Variance of Parab Residuals Applied to Original', fontsize = 'small')
+  plt.legend()
+  plt.xlim([0,1.1])
+  pdf.savefig()
+  plt.close()
+
+condition = filt_cost_var_pass > .00014
+conditionF = filt_cost_var_fail > .00014
 exP = np.extract(condition, filt_cost_var_pass)
 exF = np.extract(conditionF, filt_cost_var_fail)
-print "Percentage of passing variances greater than .00015: {}".format((float(exP.shape[0])/filt_cost_var_pass.shape[0])*100)
-print "Percentage of failing variances greater than .00015: {}".format((float(exF.shape[0])/filt_cost_var_fail.shape[0])*100)
+
+conditionS = cqt_scores_pass < .04099
+conditionSF = cqt_scores_fail < .04099
+exSP = np.extract(conditionS, cqt_scores_pass)
+exSF = np.extract(conditionSF, cqt_scores_fail)
+print "Percentage of passing variances greater than .00014: {}".format((float(exP.shape[0])/filt_cost_var_pass.shape[0])*100)
+print "Percentage of failing variances greater than .00014: {}".format((float(exF.shape[0])/filt_cost_var_fail.shape[0])*100)
 print np.percentile(filt_cost_var_pass, 90)
+print "Percentage of passing scores less than .04099: {}".format((float(exSP.shape[0])/cqt_scores_pass.shape[0])*100)
+print "Percentage of failing scores less than .04099: {}".format((float(exSF.shape[0])/cqt_scores_fail.shape[0])*100)
+print np.amin(cqt_scores_fail)
