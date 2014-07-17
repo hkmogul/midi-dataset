@@ -422,9 +422,15 @@ exRP = np.extract(condition_origP, orig_res_pass)
 exRF = np.extract(condition_origF, orig_res_fail)
 
 arg1 =  np.argwhere(condition_origP)
-arg2 =  np.argwhere(condition)
+arg2 =  np.argwhere(conditionS)
 inCommon = np.intersect1d(arg1,arg2)
-print inCommon.shape
+# print arg1
+# print arg2
+# print inCommon
+print "Songs in common of weighted score acceptance and parabolic residual acceptance: {}".format(inCommon.shape[0])
+print "Amount of remaining acceptances by weighted score: {}".format(arg2.shape[0]-inCommon.shape[0])
+print "Amount of remaining acceptances by parabolic residuals: {}".format(arg1.shape[0]-inCommon.shape[0])
+
 print "Percentage of passing variances greater than .00014: {}".format((float(exP.shape[0])/filt_cost_var_pass.shape[0])*100)
 print "Percentage of failing variances greater than .00014: {}".format((float(exF.shape[0])/filt_cost_var_fail.shape[0])*100)
 print np.percentile(filt_cost_var_pass, 90)
