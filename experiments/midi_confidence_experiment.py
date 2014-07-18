@@ -91,16 +91,22 @@ filt_cost_std_fail = np.zeros((0,))
 filt_cost_var_pass = np.zeros((0,))
 filt_cost_var_fail = np.zeros((0,))
 
-
+cost_remain_pass = np.zeros((0,))
+cost_remain_fail = np.zeros((0,))
 # parabolic regression info -  will store variance of residuals
 para_res_pass = np.zeros((0,))
 para_res_fail = np.zeros((0,))
 orig_res_pass = np.zeros((0,))
 orig_res_fail = np.zeros((0,))
+half_res_pass = np.zeros((0,))
+half_res_fail = np.zeros((0,))
 
 # info on nondiagonal steps
 nondiag_pass = np.zeros((0,))
 nondiag_fail = np.zeros((0,))
+
+first_offsets_pass = np.zeros((0,))
+first_offsets_fail = np.zeros((0,))
 
 path_to_may_30 = '../../CSV_Analysis/5-30-14_Alignment_Results.csv'
 may_30_file = open(path_to_may_30)
@@ -196,22 +202,17 @@ for row in csv_may:
   size = cost_path_filtered.shape[0]/2
   if size % 2 == 0:
     size +=1
-  print "Size of cost path: {}".format(size)
+
   cost_path_filtered = scipy.signal.medfilt(cost_path, kernel_size = size)
+  start = int(cost_path_filtered.shape[0]*.05)
+  end = int(cost_path_filtered.shape[0]*.95)
+  cost_path_filtered = cost_path_filtered[start:end]
 
-  if success == 1:
-    filt_cost_std_pass = np.append(filt_cost_std_pass, np.std(cost_path_filtered))
-    filt_cost_var_pass = np.append(filt_cost_var_pass, np.var(cost_path_filtered))
-  else:
-    filt_cost_std_fail = np.append(filt_cost_std_fail, np.std(cost_path_filtered))
-    filt_cost_var_fail = np.append(filt_cost_var_fail, np.var(cost_path_filtered))
-
-
-  p, parab,residuals = alignment_analysis.parabola_fit(cost_path_filtered)
-
-  # build residuals of applying parab to original cost path
-  res_original = np.subtract(cost_path, parab)
-
+  cost_var = cost_path[start:end] - cost_path_filtered
+  # save the remainder as a plot
+  var_output_folder = '../Post_Filter_Check'
+  if not os.path.exists(var_output_folder):
+    os.mkdir(var_output_folder)
 
   x = np.arange(start= 0,stop = cost_path_filtered.shape[0])
   # print p
@@ -223,7 +224,47 @@ for row in csv_may:
   else:
     plt.title("ORIGINAL-FAIL")
   plt.subplot2grid((2,1),(1,0))
-  plt.plot(x,cost_path_filtered, x, parab, '--')
+  plt.plot(x,cost_var, '--', label = 'Remaining After filter')
+
+
+  if success == 1:
+    plt.title(str(size)+'-Excitation-'+title_path)
+    plt.savefig(os.path.join(var_output_folder,row[0]+'-SUCCESS.pdf'))
+    plt.close()
+  else:
+    plt.title(str(size)+'-Excitation-'+title_path)
+    plt.savefig(os.path.join(var_output_folder,row[0]+'-FAIL.pdf'))
+    plt.close()
+
+  half = size/2
+  if half % 2 == 0:
+    half += 1
+  cost_half_filtered = scipy.signal.medfilt(cost_path, kernel_size = half)
+  if success == 1:
+    filt_cost_std_pass = np.append(filt_cost_std_pass, np.std(cost_path_filtered))
+    filt_cost_var_pass = np.append(filt_cost_var_pass, np.var(cost_path_filtered))
+  else:
+    filt_cost_std_fail = np.append(filt_cost_std_fail, np.std(cost_path_filtered))
+    filt_cost_var_fail = np.append(filt_cost_var_fail, np.var(cost_path_filtered))
+
+
+  p, parab,residuals = alignment_analysis.parabola_fit(cost_path_filtered)
+
+  # build residuals of applying parab to original cost path
+  res_original = np.subtract(cost_path[start:end], parab)
+  res_half = np.subtract(cost_half_filtered[start:end], parab)
+
+  x = np.arange(start= 0,stop = cost_path_filtered.shape[0])
+  # print p
+  # parab = p[0]*x**2+ p[1]*x+p[2]
+  plt.subplot2grid((2,1),(0,0))
+  plt.plot(np.arange(start= 0,stop = cost_path.shape[0]),cost_path,x,parab, '--')
+  if success == 1:
+    plt.title("ORIGINAL-SUCCESS")
+  else:
+    plt.title("ORIGINAL-FAIL")
+  plt.subplot2grid((2,1),(1,0))
+  plt.plot(x,cost_path_filtered, x, parab, '--', label = 'Parabolic Regression')
 
   if not os.path.exists('../Filter_Check-Half'):
     os.mkdir('../Filter_Check-Half')
@@ -245,10 +286,21 @@ for row in csv_may:
     para_res_pass = np.append(para_res_pass, np.var(residuals))
     nondiag_pass = np.append(nondiag_pass, nondag)
     orig_res_pass = np.append(orig_res_pass, np.var(res_original))
+    half_res_pass = np.append(half_res_pass, np.var(res_half))
   else:
     para_res_fail = np.append(para_res_fail, np.var(residuals))
     nondiag_fail = np.append(nondiag_fail, nondag)
     orig_res_fail = np.append(orig_res_fail, np.var(res_original))
+    half_res_fail = np.append(half_res_fail, np.var(res_half))
+
+
+  # data collection on first 5% of offsets
+  first5 = offsets[0:int(.05*offsets.shape[0])]
+
+  if success == 1:
+    first_offsets_pass = np.append(first_offsets_pass, float(np.amax(first5))/old_midi.get_end_time())
+  else:
+    first_offsets_fail = np.append(first_offsets_fail, float(np.amax(first5))/old_midi.get_end_time())
 
 
 
@@ -405,8 +457,32 @@ with PdfPages('Results_Comparison-Half_Length_Window.pdf') as pdf:
   pdf.savefig()
   plt.close()
 
-condition = filt_cost_var_pass > .00014
-conditionF = filt_cost_var_fail > .00014
+
+  plt.plot(.4*np.ones(half_res_pass.shape[0]), half_res_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(.8*np.ones(half_res_fail.shape[0]), half_res_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing Variance of Parab Residuals Applied to Half Filtered', fontsize = 'small')
+  plt.legend(loc = 'upper right')
+  plt.xlim([0,1.1])
+  pdf.savefig()
+  plt.close()
+
+  plt.plot(.4*np.ones(first_offsets_pass.shape[0]), first_offsets_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(.8*np.ones(first_offsets_fail.shape[0]), first_offsets_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing Maximums of first 5 percent of offsets', fontsize = 'small')
+  plt.legend(loc = 'upper right')
+  plt.xlim([0,1.1])
+  pdf.savefig()
+  plt.close()
+
+  plt.plot(cqt_scores_pass, norm_mat_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(cqt_scores_fail, norm_mat_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing Scores Against Similarity Matrix', fontsize = 'small')
+  plt.legend(loc = 'best')
+  pdf.savefig()
+  plt.close()
+
+condition = filt_cost_var_pass > .00013
+conditionF = filt_cost_var_fail > .00013
 exP = np.extract(condition, filt_cost_var_pass)
 exF = np.extract(conditionF, filt_cost_var_fail)
 
@@ -416,8 +492,8 @@ exSP = np.extract(conditionS, cqt_scores_pass)
 exSF = np.extract(conditionSF, cqt_scores_fail)
 
 
-condition_origP = orig_res_pass < .000178
-condition_origF = orig_res_fail < .000178
+condition_origP = orig_res_pass < .000157
+condition_origF = orig_res_fail < .000157
 exRP = np.extract(condition_origP, orig_res_pass)
 exRF = np.extract(condition_origF, orig_res_fail)
 
@@ -431,11 +507,11 @@ print "Songs in common of weighted score acceptance and parabolic residual accep
 print "Amount of remaining acceptances by weighted score: {}".format(arg2.shape[0]-inCommon.shape[0])
 print "Amount of remaining acceptances by parabolic residuals: {}".format(arg1.shape[0]-inCommon.shape[0])
 
-print "Percentage of passing variances greater than .00014: {}".format((float(exP.shape[0])/filt_cost_var_pass.shape[0])*100)
-print "Percentage of failing variances greater than .00014: {}".format((float(exF.shape[0])/filt_cost_var_fail.shape[0])*100)
+print "Percentage of passing variances greater than .00013: {}".format((float(exP.shape[0])/filt_cost_var_pass.shape[0])*100)
+print "Percentage of failing variances greater than .00013: {}".format((float(exF.shape[0])/filt_cost_var_fail.shape[0])*100)
 print np.percentile(filt_cost_var_pass, 90)
 print "Percentage of passing scores less than .04099: {}".format((float(exSP.shape[0])/cqt_scores_pass.shape[0])*100)
 print "Percentage of failing scores less than .04099: {}".format((float(exSF.shape[0])/cqt_scores_fail.shape[0])*100)
 print "Minimum value of variance of Parab Resid applied to Original (Failing): {}".format(np.amin(orig_res_fail))
-print "Percentage of Variances of Residuals applied to original cost paths < .000178 (passing) : {}".format((float(exRP.shape[0])/orig_res_pass.shape[0])*100)
-print "Percentage of Variances of Residuals applied to original cost paths < .000178 (failing) : {}".format((float(exRF.shape[0])/orig_res_fail.shape[0])*100)
+print "Percentage of Variances of Residuals applied to original cost paths < .000157 (passing) : {}".format((float(exRP.shape[0])/orig_res_pass.shape[0])*100)
+print "Percentage of Variances of Residuals applied to original cost paths < .000157 (failing) : {}".format((float(exRF.shape[0])/orig_res_fail.shape[0])*100)
