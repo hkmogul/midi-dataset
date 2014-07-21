@@ -3,9 +3,6 @@ import matplotlib.pyplot as plt
 import librosa
 import midi
 import pretty_midi
-import glob
-import subprocess
-import joblib
 import os
 import sys
 sys.path.append('../')
@@ -16,6 +13,7 @@ import csv
 import scipy.stats
 from matplotlib.backends.backend_pdf import PdfPages
 import scipy.signal
+
 
 
 ''' Start of post analysis of offset information to gain confidence measure in
@@ -107,6 +105,11 @@ nondiag_fail = np.zeros((0,))
 
 first_offsets_pass = np.zeros((0,))
 first_offsets_fail = np.zeros((0,))
+
+
+# cosine distances of loaded comparisons
+cosine_pass = np.zeros((0,))
+cosine_fail = np.zeros((0,))
 
 path_to_may_30 = '../../CSV_Analysis/5-30-14_Alignment_Results.csv'
 may_30_file = open(path_to_may_30)
@@ -215,16 +218,17 @@ for row in csv_may:
     os.mkdir(var_output_folder)
 
   x = np.arange(start= 0,stop = cost_path_filtered.shape[0])
+  xf = librosa.frames_to_time(x)
   # print p
   # parab = p[0]*x**2+ p[1]*x+p[2]
   plt.subplot2grid((2,1),(0,0))
-  plt.plot(np.arange(start= 0,stop = cost_path.shape[0]),cost_path)
+  plt.plot(librosa.frames_to_time(np.arange(start= 0,stop = cost_path.shape[0])),cost_path)
   if success == 1:
     plt.title("ORIGINAL-SUCCESS")
   else:
     plt.title("ORIGINAL-FAIL")
   plt.subplot2grid((2,1),(1,0))
-  plt.plot(x,cost_var, '--', label = 'Remaining After filter')
+  plt.plot(xf,cost_var, '--', label = 'Remaining After filter')
 
 
   if success == 1:
@@ -264,7 +268,7 @@ for row in csv_may:
   else:
     plt.title("ORIGINAL-FAIL")
   plt.subplot2grid((2,1),(1,0))
-  plt.plot(x,cost_path_filtered, x, parab, '--', label = 'Parabolic Regression')
+  plt.plot(xf,cost_path_filtered, xf, parab, '--', label = 'Parabolic Regression')
 
   if not os.path.exists('../Filter_Check-Half'):
     os.mkdir('../Filter_Check-Half')
@@ -303,6 +307,40 @@ for row in csv_may:
     first_offsets_fail = np.append(first_offsets_fail, float(np.amax(first5))/old_midi.get_end_time())
 
 
+  # generate spectrogram of cost path and save it to see if there is anything worthwhile there
+  # specgram_folder = '../data/cost_spectrograms'
+  # if not os.path.exists(specgram_folder):
+  #   os.mkdir(specgram_folder)
+  # plt.subplot2grid((2,1),(0,0))
+  # plt.plot(np.arange(start= 0,stop = cost_path.shape[0]),cost_path)
+  # plt.title(title_path+'-ORIGINAL')
+  # plt.subplot2grid((2,1), (1,0))
+  # # times = librosa.frames_to_time(np.arange(start= 0,stop = cost_path.shape[0]))
+  # # Fs = 1/(float(times[1])-times[0])
+  # plt.specgram(x = cost_path)
+  # if success == 1:
+  #   plt.title('Spectrogram of Cost Path-SUCCESS')
+  #   plt.savefig(os.path.join(specgram_folder,row[0]+'-SUCCESS.pdf'))
+  # else:
+  #   plt.title('Spectrogram of Cost Path-FAIL')
+  #   plt.savefig(os.path.join(specgram_folder,row[0]+'-FAIL.pdf'))
+  # plt.close()
+
+
+
+  # compare synthesized comparison mp3 (left channel is MIDI, right is MP3)
+  mp3_source = mat_out.replace('.mat.mat','.mp3.mp3')
+  comp_audio, fs = librosa.load(mp3_source, mono = False)
+  # print "shape of comp_audio {}".format(comp_audio.shape)
+  midi_audio = comp_audio[0,:]
+  mp3_audio = comp_audio[1,:]
+  cosine = np.dot(midi_audio, mp3_audio)/(np.linalg.norm(midi_audio)*np.linalg.norm(mp3_audio))
+  print "COSINE DISTANCE {}".format(cosine)
+  if success == 1:
+    cosine_pass = np.append(cosine_pass, cosine)
+  else:
+    cosine_fail = np.append(cosine_fail, cosine)
+  print midi_audio.shape
 
 
 with PdfPages('Results_Comparison-Half_Length_Window.pdf') as pdf:
@@ -481,6 +519,14 @@ with PdfPages('Results_Comparison-Half_Length_Window.pdf') as pdf:
   pdf.savefig()
   plt.close()
 
+  plt.plot(.4*np.ones(cosine_pass.shape[0]), cosine_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(.8*np.ones(cosine_fail.shape[0]), cosine_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing Cosine Distances of synthesized Comparisons', fontsize = 'small')
+  plt.legend(loc = 'upper right')
+  plt.xlim([0,1.1])
+  pdf.savefig()
+  plt.close()
+
 condition = filt_cost_var_pass > .00013
 conditionF = filt_cost_var_fail > .00013
 exP = np.extract(condition, filt_cost_var_pass)
@@ -500,9 +546,8 @@ exRF = np.extract(condition_origF, orig_res_fail)
 arg1 =  np.argwhere(condition_origP)
 arg2 =  np.argwhere(conditionS)
 inCommon = np.intersect1d(arg1,arg2)
-# print arg1
-# print arg2
-# print inCommon
+
+
 print "Songs in common of weighted score acceptance and parabolic residual acceptance: {}".format(inCommon.shape[0])
 print "Amount of remaining acceptances by weighted score: {}".format(arg2.shape[0]-inCommon.shape[0])
 print "Amount of remaining acceptances by parabolic residuals: {}".format(arg1.shape[0]-inCommon.shape[0])

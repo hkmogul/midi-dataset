@@ -51,8 +51,8 @@ def get_unweighted_score(p,q,similarity_matrix):
 
 def get_offsets(m_aligned, m):
   ''' Forms and returns alignment offsets based on the adjusted midi and the original '''
-  note_ons = np.array([note.start for instrument in m.instruments for note in instrument.events])
-  aligned_note_ons = np.array([note.start for instrument in m_aligned.instruments for note in instrument.events])
+  note_ons = np.array([note.start for instrument in m.instruments for note in instrument.notes])
+  aligned_note_ons = np.array([note.start for instrument in m_aligned.instruments for note in instrument.notes])
   diff = np.array([[]])
   last = min(note_ons.shape[0],aligned_note_ons.shape[0])
   for i in xrange(last):
@@ -71,8 +71,8 @@ def get_regression_stats(m_aligned,m, offsets = None):
   if offsets == None:
     offsets = get_offsets(m_aligned, m)
 
-  note_ons = np.array([note.start for instrument in m.instruments for note in instrument.events])
-  aligned_note_ons = np.array([note.start for instrument in m_aligned.instruments for note in instrument.events])
+  note_ons = np.array([note.start for instrument in m.instruments for note in instrument.notes])
+  aligned_note_ons = np.array([note.start for instrument in m_aligned.instruments for note in instrument.notes])
   last = min(note_ons.shape[0],aligned_note_ons.shape[0])
   slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(note_ons[0:(last)],offsets)
   return slope, intercept, r_value, p_value, std_err
