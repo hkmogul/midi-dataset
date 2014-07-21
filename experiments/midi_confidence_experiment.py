@@ -111,11 +111,18 @@ first_offsets_fail = np.zeros((0,))
 cosine_pass = np.zeros((0,))
 cosine_fail = np.zeros((0,))
 
+amt_analysis = 0
+dataX = np.zeros((0,18))
+
+
+
 path_to_may_30 = '../../CSV_Analysis/5-30-14_Alignment_Results.csv'
 may_30_file = open(path_to_may_30)
 csv_may = csv.reader(may_30_file)
 csv_may.next()
 for row in csv_may:
+  amt_analysis = 0
+  vec = np.zeros((0,))
   # if "Guns N Roses" in row[0] or "Mary Wells" in row[0]:
   #   continue
 
@@ -165,7 +172,11 @@ for row in csv_may:
     norm_mat_fail = np.append(norm_mat_fail, norm_mat1)
     piano_diff_fail = np.append(piano_diff_fail, path_diff)
 
-
+  amt_analysis += 4
+  vec = np.append(vec, score1)
+  vec = np.append(vec, uw_score1)
+  vec = np.append(vec, norm_mat1)
+  vec = np.append(vec, path_diff)
   # linear regression on offset
   # first, get original midi path
   old_midi_path = os.path.join(BASE_PATH, 'Clean_MIDIs',title_path.replace('.mat','.mid'))
@@ -188,6 +199,11 @@ for row in csv_may:
     r_offset_fail = np.append(r_offset_fail, r)
     std_err_fail = np.append(std_err_fail, stderr)
 
+  amt_analysis += 4
+  vec = np.append(vec, np.amax(offsets))
+  vec = np.append(vec, np.std(offsets))
+  vec = np.append(vec, r)
+  vec = np.append(vec, stderr)
   # print "Slope of regression: {}".format(slope)
   # print "R-value of regression: {}".format(r)
 
@@ -200,7 +216,9 @@ for row in csv_may:
   else:
     cost_std_fail = np.append(cost_std_fail, np.std(cost_path))
     cost_var_fail = np.append(cost_var_fail, np.var(cost_path))
-
+  amt_analysis += 2
+  vec = np.append(vec, np.std(cost_path))
+  vec = np.append(vec, np.var(cost_path))
   cost_path_filtered = np.copy(cost_path)
   size = cost_path_filtered.shape[0]/2
   if size % 2 == 0:
@@ -250,6 +268,10 @@ for row in csv_may:
   else:
     filt_cost_std_fail = np.append(filt_cost_std_fail, np.std(cost_path_filtered))
     filt_cost_var_fail = np.append(filt_cost_var_fail, np.var(cost_path_filtered))
+  amt_analysis += 2
+  vec = np.append(vec, np.std(cost_path_filtered))
+  vec = np.append(vec, np.var(cost_path_filtered))
+
 
 
   p, parab,residuals = alignment_analysis.parabola_fit(cost_path_filtered)
@@ -296,8 +318,11 @@ for row in csv_may:
     nondiag_fail = np.append(nondiag_fail, nondag)
     orig_res_fail = np.append(orig_res_fail, np.var(res_original))
     half_res_fail = np.append(half_res_fail, np.var(res_half))
-
-
+  amt_analysis += 4
+  vec = np.append(vec, np.var(residuals))
+  vec = np.append(vec, nondag)
+  vec = np.append(vec,np.var(res_original))
+  vec = np.append(vec, np.var(res_half))
   # data collection on first 5% of offsets
   first5 = offsets[0:int(.05*offsets.shape[0])]
 
@@ -305,8 +330,8 @@ for row in csv_may:
     first_offsets_pass = np.append(first_offsets_pass, float(np.amax(first5))/old_midi.get_end_time())
   else:
     first_offsets_fail = np.append(first_offsets_fail, float(np.amax(first5))/old_midi.get_end_time())
-
-
+  amt_analysis += 1
+  vec = np.append(vec, float(np.amax(first5))/old_midi.get_end_time())
   # generate spectrogram of cost path and save it to see if there is anything worthwhile there
   # specgram_folder = '../data/cost_spectrograms'
   # if not os.path.exists(specgram_folder):
@@ -341,8 +366,10 @@ for row in csv_may:
   else:
     cosine_fail = np.append(cosine_fail, cosine)
   print midi_audio.shape
-
-
+  amt_analysis += 1
+  vec = np.append(vec, cosine)
+  print "AMOUNT OF ANALYSIS TYPES {}".format(amt_analysis)
+  print vec.shape
 with PdfPages('Results_Comparison-Half_Length_Window.pdf') as pdf:
 
   # ax = plt.subplot2grid((3,2),(0,0))
