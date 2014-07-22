@@ -115,7 +115,7 @@ cosine_fail = np.zeros((0,))
 amt_analysis = 0
 dataX = np.zeros((0,18))
 dataY = np.zeros((0,1))
-
+dataNames = np.empty((0,))
 
 path_to_may_30 = '../../CSV_Analysis/5-30-14_Alignment_Results.csv'
 may_30_file = open(path_to_may_30)
@@ -128,6 +128,8 @@ for row in csv_may:
   #   continue
 
   title_path = vs_filename_to_path(row[0])
+  dataNames = np.append(dataNames, title_path)
+
   piano_out = os.path.join(BASE_PATH, 'midi-aligned-additive-dpmod-piano',title_path)
   success = int(row[2])
   mat_out = os.path.join('../../MIDI_Results_5-30',row[0]).replace('.mid', '.mat')+'.mat'
@@ -596,4 +598,4 @@ path_for_dataX = '../data/ML_info'
 if not os.path.exists(path_for_dataX):
   os.mkdir(path_for_dataX)
 print dataY.shape
-scipy.io.savemat(os.path.join(path_for_dataX,'X_and_y.mat'),{'X': dataX,'y': dataY})
+scipy.io.savemat(os.path.join(path_for_dataX,'X_and_y.mat'),{'X': dataX,'y': dataY, 'names' : dataNames})
