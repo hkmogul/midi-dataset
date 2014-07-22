@@ -111,9 +111,10 @@ first_offsets_fail = np.zeros((0,))
 cosine_pass = np.zeros((0,))
 cosine_fail = np.zeros((0,))
 
+# data building for machine learning
 amt_analysis = 0
 dataX = np.zeros((0,18))
-
+dataY = np.zeros((0,1))
 
 
 path_to_may_30 = '../../CSV_Analysis/5-30-14_Alignment_Results.csv'
@@ -360,16 +361,19 @@ for row in csv_may:
   midi_audio = comp_audio[0,:]
   mp3_audio = comp_audio[1,:]
   cosine = np.dot(midi_audio, mp3_audio)/(np.linalg.norm(midi_audio)*np.linalg.norm(mp3_audio))
-  print "COSINE DISTANCE {}".format(cosine)
   if success == 1:
     cosine_pass = np.append(cosine_pass, cosine)
   else:
     cosine_fail = np.append(cosine_fail, cosine)
-  print midi_audio.shape
   amt_analysis += 1
   vec = np.append(vec, cosine)
-  print "AMOUNT OF ANALYSIS TYPES {}".format(amt_analysis)
-  print vec.shape
+
+  dataX = np.vstack((dataX, vec))
+
+
+  dataY = np.vstack((dataY, np.array([success])))
+  print dataY.shape
+
 with PdfPages('Results_Comparison-Half_Length_Window.pdf') as pdf:
 
   # ax = plt.subplot2grid((3,2),(0,0))
@@ -587,3 +591,9 @@ print "Percentage of failing scores less than .04099: {}".format((float(exSF.sha
 print "Minimum value of variance of Parab Resid applied to Original (Failing): {}".format(np.amin(orig_res_fail))
 print "Percentage of Variances of Residuals applied to original cost paths < .000157 (passing) : {}".format((float(exRP.shape[0])/orig_res_pass.shape[0])*100)
 print "Percentage of Variances of Residuals applied to original cost paths < .000157 (failing) : {}".format((float(exRF.shape[0])/orig_res_fail.shape[0])*100)
+
+path_for_dataX = '../data/ML_info'
+if not os.path.exists(path_for_dataX):
+  os.mkdir(path_for_dataX)
+print dataY.shape
+scipy.io.savemat(os.path.join(path_for_dataX,'X_and_y.mat'),{'X': dataX,'y': dataY})
