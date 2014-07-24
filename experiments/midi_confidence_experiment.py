@@ -382,17 +382,10 @@ for row in csv_may:
   m_tempo, m_beats = librosa.beat.beat_track(midi_audio, fs)
   a_tempo, a_beats = librosa.beat.beat_track(mp3_audio, fs)
 
-  print m_beats.shape
-  print a_beats.shape
-
   m_beats, a_beats = alignment_analysis.pad_lesser_vec(m_beats, a_beats)
 
 
-  print m_beats.shape
-  print a_beats.shape
-
   beat_cosine = np.dot(m_beats, a_beats)/(np.linalg.norm(m_beats)*np.linalg.norm(a_beats))
-
   if success == 1:
     tempo_diff_pass = np.append(tempo_diff_pass, abs(m_tempo-a_tempo))
     beat_cos_pass = np.append(beat_cos_pass, beat_cosine)
