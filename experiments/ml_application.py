@@ -138,7 +138,8 @@ for i in xrange(amt):
   prec_arr, rec_arr, fbeta_arr, support_arr = metrics.precision_recall_fscore_support(
                                                                   y_test,
                                                                   y_pred,
-                                                                  labels = None
+                                                                  labels = None,
+                                                                  beta = .5
                                                                   )
   precision, recall, fbeta_score = prec_arr[1], rec_arr[1], fbeta_arr[1]
   fp, fn = get_fp_fn(y_pred, y_test)
