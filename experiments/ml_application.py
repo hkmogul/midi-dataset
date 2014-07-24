@@ -64,7 +64,9 @@ data = scipy.io.loadmat(mat_path)
 Xn = data['X']
 yn = data['y']
 names = data['names']
-clf = RandomForestClassifier()
+trees = 150
+
+clf = RandomForestClassifier(n_estimators = trees)
 X = normalize_matrix(Xn)
 y = np.reshape(yn, (yn.shape[0],))
 
@@ -77,7 +79,6 @@ print "SCORE OF WHOLE FIT"
 print clf.score(X,y)
 print "----------"
 test_size = .2
-trees = 10
 print "SCORE OF TEST/RANDOM FIT; TEST SIZE = {}".format(test_size)
 
 X_train, X_test, y_train, y_test = cross_validation.train_test_split(X,
@@ -95,7 +96,7 @@ prec_arr, recall_arr, fbeta_arr, support_arr = metrics.precision_recall_fscore_s
                                                                 y_test,
                                                                 y_pred,
                                                                 labels = None,
-                                                                beta = 2
+                                                                beta = .25
                                                                 )
 precision, recall, fbeta_score = prec_arr[1], recall_arr[1], fbeta_arr[1]
 
@@ -122,7 +123,7 @@ false_neg = np.empty((amt,))
 precision_arr = np.empty((amt,))
 recall_arr = np.empty((amt,))
 fb_arr = np.empty((amt,))
-
+amt_success = np.empty((amt,)) # amount of test items the ML deems = 1
 
 for i in xrange(amt):
   # use the index to generate random state because why not
@@ -149,11 +150,14 @@ for i in xrange(amt):
   precision_arr[i] = precision
   recall_arr[i] = recall
   fb_arr[i] = fbeta_score
+  amt_success[i] = np.argwhere(y_pred).shape[0]
 
 
 
 print "AVERAGE SCORE IN MULTIPLE: {}".format(np.mean(scores))
 print "AVERAGE AMT OF FALSE POSITIVES: {}".format(np.mean(false_pos))
 print "AVERAGE PRECISION: {}".format(np.mean(precision_arr))
+print "RATE OF FALSE POSITIVES PER TEST SIZE: {}".format(np.mean(false_pos)/y_test.shape[0])
+print "RATE OF FALSE POSITIVES PER AMT OF POSITIVES: {}".format(np.mean(false_pos)/np.mean(amt_success))
 print "AVERAGE RECALL: {}".format(np.mean(recall_arr))
 print "AVERAGE F-BETA: {}".format(np.mean(fbeta_arr))
