@@ -112,3 +112,17 @@ def parabola_fit(cost_path):
   # for i in xrange(residuals.shape[0]):
   #   residuals[i] = cost_path[i]-parab[i]
   return p, parab,residuals
+
+def pad_lesser_vec(vec1, vec2):
+  ''' Returns input vectors with the one of greater length unchanged, and
+      the lesser padded with zeros at end. '''
+  if vec1.shape[0]  == vec2.shape[0]:
+    return vec1, vec2
+  elif vec1.shape[0] > vec2.shape[0]:
+    while vec1.shape[0] > vec2.shape[0]:
+      vec2 = np.append(vec2, 0)
+    return vec1, vec2
+  else:
+    while vec2.shape[0] > vec1.shape[0]:
+      vec1 = np.append(vec1,0)
+    return vec1, vec2

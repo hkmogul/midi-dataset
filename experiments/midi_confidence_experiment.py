@@ -111,9 +111,17 @@ first_offsets_fail = np.zeros((0,))
 cosine_pass = np.zeros((0,))
 cosine_fail = np.zeros((0,))
 
+# beat track differences- both diffs in tempo and cosine distance of beats
+tempo_diff_pass = np.zeros((0,))
+tempo_diff_fail = np.zeros((0,))
+
+beat_cos_pass = np.zeros((0,))
+beat_cos_fail = np.zeros((0,))
+
+
 # data building for machine learning
 amt_analysis = 0
-dataX = np.zeros((0,17))
+dataX = np.zeros((0,18))
 dataY = np.zeros((0,1))
 dataNames = np.empty((0,))
 
@@ -203,8 +211,8 @@ for row in csv_may:
     std_err_fail = np.append(std_err_fail, stderr)
 
   amt_analysis += 4
-  vec = np.append(vec, np.amax(offsets))
-  vec = np.append(vec, np.std(offsets))
+  # vec = np.append(vec, np.amax(offsets))
+  vec = np.append(vec, np.var(offsets))
   vec = np.append(vec, r)
   vec = np.append(vec, stderr)
   # print "Slope of regression: {}".format(slope)
@@ -368,13 +376,39 @@ for row in csv_may:
   else:
     cosine_fail = np.append(cosine_fail, cosine)
   amt_analysis += 1
-  vec = np.append(vec, cosine)
 
+  # beat track differences
+
+  m_tempo, m_beats = librosa.beat.beat_track(midi_audio, fs)
+  a_tempo, a_beats = librosa.beat.beat_track(mp3_audio, fs)
+
+  print m_beats.shape
+  print a_beats.shape
+
+  m_beats, a_beats = alignment_analysis.pad_lesser_vec(m_beats, a_beats)
+
+
+  print m_beats.shape
+  print a_beats.shape
+
+  beat_cosine = np.dot(m_beats, a_beats)/(np.linalg.norm(m_beats)*np.linalg.norm(a_beats))
+
+  if success == 1:
+    tempo_diff_pass = np.append(tempo_diff_pass, abs(m_tempo-a_tempo))
+    beat_cos_pass = np.append(beat_cos_pass, beat_cosine)
+  else:
+    tempo_diff_fail = np.append(tempo_diff_fail, abs(m_tempo-a_tempo))
+    beat_cos_fail = np.append(beat_cos_fail, beat_cosine)
+
+  # aggregate features and targets
+  vec = np.append(vec, cosine)
+  vec = np.append(vec, beat_cosine)
+  vec = np.append(vec, abs(m_tempo-a_tempo))
+  print "DIFF IN TEMPO : {}".format(abs(m_tempo-a_tempo))
   dataX = np.vstack((dataX, vec))
 
 
   dataY = np.vstack((dataY, np.array([success])))
-  print dataY.shape
 
 with PdfPages('Results_Comparison-Half_Length_Window.pdf') as pdf:
 
