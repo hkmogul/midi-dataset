@@ -113,7 +113,7 @@ cosine_fail = np.zeros((0,))
 
 # data building for machine learning
 amt_analysis = 0
-dataX = np.zeros((0,18))
+dataX = np.zeros((0,17))
 dataY = np.zeros((0,1))
 dataNames = np.empty((0,))
 
@@ -323,7 +323,7 @@ for row in csv_may:
     half_res_fail = np.append(half_res_fail, np.var(res_half))
   amt_analysis += 4
   vec = np.append(vec, np.var(residuals))
-  vec = np.append(vec, nondag)
+  # vec = np.append(vec, nondag)
   vec = np.append(vec,np.var(res_original))
   vec = np.append(vec, np.var(res_half))
   # data collection on first 5% of offsets
