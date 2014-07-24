@@ -587,6 +587,23 @@ with PdfPages('Results_Comparison-Half_Length_Window.pdf') as pdf:
   pdf.savefig()
   plt.close()
 
+  plt.plot(.4*np.ones(beat_cos_pass.shape[0]), beat_cos_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(.8*np.ones(beat_cos_fail.shape[0]), beat_cos_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing Cosine Distances of Beat Tracking', fontsize = 'small')
+  plt.legend(loc = 'upper right')
+  plt.xlim([0,1.1])
+  pdf.savefig()
+  plt.close()
+
+  plt.plot(.4*np.ones(tempo_diff_pass.shape[0]), tempo_diff_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(.8*np.ones(tempo_diff_fail.shape[0]), tempo_diff_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing Cosine Distances of Beat Tracking', fontsize = 'small')
+  plt.legend(loc = 'upper right')
+  plt.xlim([0,1.1])
+  pdf.savefig()
+  plt.close()
+
+
 condition = filt_cost_var_pass > .00013
 conditionF = filt_cost_var_fail > .00013
 exP = np.extract(condition, filt_cost_var_pass)
