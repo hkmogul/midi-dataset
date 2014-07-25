@@ -96,7 +96,7 @@ prec_arr, recall_arr, fbeta_arr, support_arr = metrics.precision_recall_fscore_s
                                                                 y_test,
                                                                 y_pred,
                                                                 labels = None,
-                                                                beta = .25
+                                                                beta = .5
                                                                 )
 precision, recall, fbeta_score = prec_arr[1], recall_arr[1], fbeta_arr[1]
 
