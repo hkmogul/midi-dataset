@@ -115,14 +115,18 @@ def parabola_fit(cost_path):
 
 def pad_lesser_vec(vec1, vec2):
   ''' Returns input vectors with the one of greater length unchanged, and
-      the lesser padded with zeros at end. '''
+      the lesser padded with zeros at end. Also returns number of indices
+      it added for padding '''
+  amt = 0
   if vec1.shape[0]  == vec2.shape[0]:
-    return vec1, vec2
+    return vec1, vec2, amt
   elif vec1.shape[0] > vec2.shape[0]:
     while vec1.shape[0] > vec2.shape[0]:
       vec2 = np.append(vec2, 0)
-    return vec1, vec2
+      amt += 1
+    return vec1, vec2, amt
   else:
     while vec2.shape[0] > vec1.shape[0]:
       vec1 = np.append(vec1,0)
-    return vec1, vec2
+      amt+=1
+    return vec1, vec2, amt
