@@ -121,14 +121,21 @@ beat_cos_fail = np.zeros((0,))
 
 # data building for machine learning
 amt_analysis = 0
-dataX = np.zeros((0,18))
+dataX = np.zeros((0,19))
 dataY = np.zeros((0,1))
 dataNames = np.empty((0,))
 
 path_to_may_30 = '../../CSV_Analysis/5-30-14_Alignment_Results.csv'
+beat_path = '../data/beat_info'
+if not os.path.exists(beat_path):
+  os.mkdir(beat_path)
 may_30_file = open(path_to_may_30)
 csv_may = csv.reader(may_30_file)
 csv_may.next()
+
+
+
+
 for row in csv_may:
   amt_analysis = 0
   vec = np.zeros((0,))
@@ -378,26 +385,54 @@ for row in csv_may:
   amt_analysis += 1
 
   # beat track differences
+  # cache for other runs
+  if not os.path.exists(os.path.join(beat_path, row[0]+'.mat')):
+    m_tempo, m_beats = librosa.beat.beat_track(midi_audio, fs)
+    a_tempo, a_beats = librosa.beat.beat_track(mp3_audio, fs)
+    # TODO : temp fix to get rid of padding in saved mats
+    scipy.io.savemat(os.path.join(beat_path, row[0]+'.mat'), {'m_beats': m_beats,
+                                                             'm_tempo': m_tempo,
+                                                             'a_beats': a_beats,
+                                                             'a_tempo': a_tempo})
 
-  m_tempo, m_beats = librosa.beat.beat_track(midi_audio, fs)
-  a_tempo, a_beats = librosa.beat.beat_track(mp3_audio, fs)
 
-  m_beats, a_beats = alignment_analysis.pad_lesser_vec(m_beats, a_beats)
+  else:
+    beat_mat = scipy.io.loadmat(os.path.join(beat_path, row[0]+'.mat'))
+    # m_tempo = beat_mat['m_tempo'][0,0]
+    # m_beats = beat_mat['m_beats'][0,:]
+    # TODO: replace lower 1 line with upper after initial runthru
+    m_tempo, m_beats = librosa.beat.beat_track(midi_audio, fs)
+
+    a_tempo = beat_mat['a_tempo'][0,0]
+    a_beats = beat_mat['a_beats'][0,:]
+    # resave fixed form
+    scipy.io.savemat(os.path.join(beat_path, row[0]+'.mat'), {'m_beats': m_beats,
+                                                             'm_tempo': m_tempo,
+                                                             'a_beats': a_beats,
+                                                             'a_tempo': a_tempo})
 
 
+  m_beats, a_beats, amt_pad = alignment_analysis.pad_lesser_vec(m_beats, a_beats)
+
+  beat_diff = librosa.frames_to_time(np.subtract(m_beats, a_beats))
+  print beat_diff
+  temp_mod = abs((m_tempo%2)-(a_tempo%2))
   beat_cosine = np.dot(m_beats, a_beats)/(np.linalg.norm(m_beats)*np.linalg.norm(a_beats))
   if success == 1:
-    tempo_diff_pass = np.append(tempo_diff_pass, abs(m_tempo-a_tempo))
+    tempo_diff_pass = np.append(tempo_diff_pass, temp_mod)
     beat_cos_pass = np.append(beat_cos_pass, beat_cosine)
   else:
-    tempo_diff_fail = np.append(tempo_diff_fail, abs(m_tempo-a_tempo))
+    tempo_diff_fail = np.append(tempo_diff_fail, temp_mod)
     beat_cos_fail = np.append(beat_cos_fail, beat_cosine)
 
   # aggregate features and targets
   vec = np.append(vec, cosine)
   vec = np.append(vec, beat_cosine)
-  vec = np.append(vec, abs(m_tempo-a_tempo))
+  vec = np.append(vec, temp_mod)
+  vec = np.append(vec, amt_pad)
   print "DIFF IN TEMPO : {}".format(abs(m_tempo-a_tempo))
+  print "DIFF IN TEMPO MOD 2 EACH OPERAND: {}".format(abs((m_tempo%2)-(a_tempo%2)))
+  print "EXTRA BEATS NECESSARY: {}".format(amt_pad)
   dataX = np.vstack((dataX, vec))
 
 
@@ -597,7 +632,7 @@ with PdfPages('Results_Comparison-Half_Length_Window.pdf') as pdf:
 
   plt.plot(.4*np.ones(tempo_diff_pass.shape[0]), tempo_diff_pass, '.', color =  'g', label = 'Passing')
   plt.plot(.8*np.ones(tempo_diff_fail.shape[0]), tempo_diff_fail, '.', color =  'r', label = 'Failing')
-  plt.title('Passing vs failing Cosine Distances of Beat Tracking', fontsize = 'small')
+  plt.title('Passing vs failing Mod 2 Tempo Differences', fontsize = 'small')
   plt.legend(loc = 'upper right')
   plt.xlim([0,1.1])
   pdf.savefig()
