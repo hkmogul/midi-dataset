@@ -79,9 +79,10 @@ def cross_val_with_names(X, y, names, test_amt, random_seed = None):
   # y_train = np.copy(y)
   y_test = np.empty((test_len,))
 
-  names_train = np.empty((train_len,))
+  dt = np.dtype('a50')
+  names_train = np.empty((train_len,), dtype = dt)
   # names_train = np.copy(names)
-  names_test = np.empty((test_len,))
+  names_test = np.empty((test_len,), dtype = dt)
 
 
   #fill in testing data
@@ -91,11 +92,36 @@ def cross_val_with_names(X, y, names, test_amt, random_seed = None):
 
     y_test[i] = y[test_indices[i]]
 
-    names_test[i] = y[test_indices[i]]
+    names_test[i] = names[test_indices[i]]
   for i in xrange(train_len):
     X_train[i,:] = X[train_indices[i],:]
 
     y_train[i] = y[train_indices[i]]
 
-    names_train[i] = y[train_indices[i]]
+    names_train[i] = names[train_indices[i]]
+
   return X_train, X_test, y_train, y_test, names_train, names_test
+
+def pretty_print_prob(y_pred, y, prob, names):
+  ''' For printing out probabilities of outputs and what they actually were '''
+  for i in xrange(y_pred.shape[0]):
+    print "Name of file: {}".format(names[i])
+    print "\t P(0): {0}, P(1): {1}".format(prob[i,0], prob[i,1])
+    print "\t RF classified as {0}, was actually {1}".format(y_pred[i],y[i])
+    print "----------"
+def util_print(y_pred, y, prob, names = None):
+  ''' not so pretty, but useful print '''
+  if names is None:
+    for i in xrange(y_pred.shape[0]):
+      if y_pred[i] == y[i]:
+        success = 1
+      else:
+        success = 0
+      print '{0}, {1}'.format(max(prob[i,0],prob[i,1]), success)
+  else:
+    for i in xrange(y_pred.shape[0]):
+      if y_pred[i] == y[i]:
+        success = 1
+      else:
+        success = 0
+      print '{0}, {1}, {2}'.format(max(prob[i,0],prob[i,1]), success, names[i])

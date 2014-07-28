@@ -25,10 +25,8 @@ X = ml.normalize_matrix(Xn)
 y = np.reshape(yn, (yn.shape[0],))
 
 
-# clf.fit(X[0:X.shape[0]-5], y[0:y.shape[0]-5])
 clf.fit(X,y)
-# print clf.predict(X)
-# print names[-2]
+
 print "SCORE OF WHOLE FIT"
 print clf.score(X,y)
 print "----------"
@@ -41,9 +39,8 @@ print "SCORE OF CROSS VAL SVC: {}".format(clf_svm.score(X_test, y_test))
 # cross validation
 print "SCORE OF TEST/RANDOM FIT RANDOM FOREST; TEST SIZE = {}".format(test_size)
 
-X_train, X_test, y_train, y_test = cross_validation.train_test_split(X,
-                                    y, test_size=test_size, random_state=0)
 
+X_train, X_test, y_train, y_test, names_train, names_test = ml.cross_val_with_names(X, y, names, test_amt = test_size, random_seed = None)
 # single cross validation
 print "NUMBER OF TREES: {}".format(trees)
 clf2 = RandomForestClassifier(n_estimators = trees).fit(X_train, y_train)
@@ -51,6 +48,10 @@ print "SCORE OF CROSS VALIDATION, {0} TRAINING SAMPLES: {1}".format(
                                                       y_train.shape[0],
                                                       clf2.score(X_test, y_test))
 y_pred = clf2.predict(X_test)
+proba = clf2.predict_proba(X_test)
+
+ml.util_print(y_pred, y_test, proba, names_test)
+ml.pretty_print_prob(y_pred, y_test, proba, names_test)
 # include precision recall
 prec_arr, recall_arr, fbeta_arr, support_arr = metrics.precision_recall_fscore_support(
                                                                 y_test,
@@ -87,8 +88,8 @@ amt_success = np.empty((amt,)) # amount of test items the ML deems = 1
 
 for i in xrange(amt):
   # use the index to generate random state because why not
-  X_train, X_test, y_train, y_test = cross_validation.train_test_split(X,
-                                      y, test_size=test_size, random_state=i)
+  X_train, X_test, y_train, y_test, names_train, names_test = ml.cross_val_with_names(X,
+                                      y, names, test_amt = test_size)
 
   clf_mult = RandomForestClassifier(n_estimators = trees).fit(X_train, y_train)
 
