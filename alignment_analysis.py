@@ -130,3 +130,19 @@ def pad_lesser_vec(vec1, vec2):
       vec1 = np.append(vec1,0)
       amt+=1
     return vec1, vec2, amt
+
+def truncate_greater_vec(vec1, vec2):
+  ''' Returns input vectors with the one of shorter length unchanged, and the
+      greater one's extra indices removed. Also returns amount it shortened it by.'''
+  amt = 0
+  if vec1.shape[0]  == vec2.shape[0]:
+    return vec1, vec2, amt
+  elif vec1.shape[0] > vec2.shape[0]:
+    while vec1.shape[0] > vec2.shape[0]:
+      vec1 = vec1[:-1]
+    return vec1, vec2, amt
+  else:
+    while vec2.shape[0] > vec1.shape[0]:
+      vec2 = vec2[:-1]
+      amt+=1
+    return vec1, vec2, amt
