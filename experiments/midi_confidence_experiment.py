@@ -119,9 +119,13 @@ beat_cos_pass = np.zeros((0,))
 beat_cos_fail = np.zeros((0,))
 
 
+norm_diff_pass = np.zeros((0,))
+norm_diff_fail = np.zeros((0,))
+intercept_pass = np.zeros((0,))
+intercept_fail = np.zeros((0,))
 # data building for machine learning
 amt_analysis = 0
-dataX = np.zeros((0,19))
+dataX = np.zeros((0,20))
 dataY = np.zeros((0,1))
 dataNames = np.empty((0,))
 
@@ -184,12 +188,15 @@ for row in csv_may:
     cqt_scores_passUW =np.append(cqt_scores_passUW, uw_score1)
     norm_mat_pass = np.append(norm_mat_pass, norm_mat1)
     piano_diff_pass = np.append(piano_diff_pass, path_diff)
+    norm_diff_pass = np.append(norm_diff_pass, abs(norm_mat1 - score1))
   else:
     cqt_scores_fail = np.append(cqt_scores_fail, score1)
     cqt_scores_failUW = np.append(cqt_scores_failUW, uw_score1)
     norm_mat_fail = np.append(norm_mat_fail, norm_mat1)
     piano_diff_fail = np.append(piano_diff_fail, path_diff)
+    norm_diff_fail = np.append(norm_diff_fail, abs(norm_mat1 - score1))
 
+  print "DIFF IN SCORE VS MATRIX MAGNITUDE: {}".format(abs(norm_mat1 - score1))
   amt_analysis += 4
   vec = np.append(vec, score1)
   vec = np.append(vec, uw_score1)
@@ -206,16 +213,20 @@ for row in csv_may:
 
   slope, intercept, r, p_err, stderr = alignment_analysis.get_regression_stats(aligned_midi, old_midi, offsets)
   # print "Maximum offset: {}".format(np.amax(offsets))
+  print "Ratio of intercept from offset linreg to length of x axis: {}".format(intercept/offsets.shape[0])
   if success == 1:
     max_offset_pass = np.append(max_offset_pass, np.amax(offsets))
     offset_deviation_pass = np.append(offset_deviation_pass, np.std(offsets))
     r_offset_pass = np.append(r_offset_pass,r)
     std_err_pass = np.append(std_err_pass, stderr)
+    intercept_pass = np.append(intercept_pass, intercept/offsets.shape[0])
   else:
     max_offset_fail = np.append(max_offset_fail, np.amax(offsets))
     offset_deviation_fail = np.append(offset_deviation_fail, np.std(offsets))
     r_offset_fail = np.append(r_offset_fail, r)
     std_err_fail = np.append(std_err_fail, stderr)
+    intercept_fail = np.append(intercept_fail, intercept/offsets.shape[0])
+
 
   amt_analysis += 4
   # vec = np.append(vec, np.amax(offsets))
@@ -398,24 +409,23 @@ for row in csv_may:
 
   else:
     beat_mat = scipy.io.loadmat(os.path.join(beat_path, row[0]+'.mat'))
-    # m_tempo = beat_mat['m_tempo'][0,0]
-    # m_beats = beat_mat['m_beats'][0,:]
+    m_tempo = beat_mat['m_tempo'][0,0]
+    m_beats = beat_mat['m_beats'][0,:]
     # TODO: replace lower 1 line with upper after initial runthru
-    m_tempo, m_beats = librosa.beat.beat_track(midi_audio, fs)
+    # m_tempo, m_beats = librosa.beat.beat_track(midi_audio, fs)
 
     a_tempo = beat_mat['a_tempo'][0,0]
     a_beats = beat_mat['a_beats'][0,:]
     # resave fixed form
-    scipy.io.savemat(os.path.join(beat_path, row[0]+'.mat'), {'m_beats': m_beats,
-                                                             'm_tempo': m_tempo,
-                                                             'a_beats': a_beats,
-                                                             'a_tempo': a_tempo})
+    # scipy.io.savemat(os.path.join(beat_path, row[0]+'.mat'), {'m_beats': m_beats,
+    #                                                          'm_tempo': m_tempo,
+    #                                                          'a_beats': a_beats,
+    #                                                          'a_tempo': a_tempo})
 
 
-  m_beats, a_beats, amt_pad = alignment_analysis.pad_lesser_vec(m_beats, a_beats)
-
-  beat_diff = librosa.frames_to_time(np.subtract(m_beats, a_beats))
-  print beat_diff
+  m_beatsP, a_beatsP, amt_pad = alignment_analysis.pad_lesser_vec(m_beats, a_beats)
+  m_beats, a_beats, amt_trunc = alignment_analysis.truncate_greater_vec(m_beats, a_beats)
+  beat_diff = librosa.frames_to_time(np.absolute(np.subtract(m_beats, a_beats)))
   temp_mod = abs((m_tempo%2)-(a_tempo%2))
   beat_cosine = np.dot(m_beats, a_beats)/(np.linalg.norm(m_beats)*np.linalg.norm(a_beats))
   if success == 1:
@@ -429,6 +439,7 @@ for row in csv_may:
   vec = np.append(vec, cosine)
   vec = np.append(vec, beat_cosine)
   vec = np.append(vec, temp_mod)
+  vec = np.append(vec, abs(m_tempo-a_tempo))
   vec = np.append(vec, amt_pad)
   print "DIFF IN TEMPO : {}".format(abs(m_tempo-a_tempo))
   print "DIFF IN TEMPO MOD 2 EACH OPERAND: {}".format(abs((m_tempo%2)-(a_tempo%2)))
@@ -437,7 +448,7 @@ for row in csv_may:
 
 
   dataY = np.vstack((dataY, np.array([success])))
-
+  print "-----------------------------"
 with PdfPages('Results_Comparison-Half_Length_Window.pdf') as pdf:
 
   # ax = plt.subplot2grid((3,2),(0,0))
@@ -633,6 +644,23 @@ with PdfPages('Results_Comparison-Half_Length_Window.pdf') as pdf:
   plt.plot(.4*np.ones(tempo_diff_pass.shape[0]), tempo_diff_pass, '.', color =  'g', label = 'Passing')
   plt.plot(.8*np.ones(tempo_diff_fail.shape[0]), tempo_diff_fail, '.', color =  'r', label = 'Failing')
   plt.title('Passing vs failing Mod 2 Tempo Differences', fontsize = 'small')
+  plt.legend(loc = 'upper right')
+  plt.xlim([0,1.1])
+  pdf.savefig()
+  plt.close()
+
+
+  plt.plot(.4*np.ones(norm_diff_pass.shape[0]), norm_diff_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(.8*np.ones(norm_diff_fail.shape[0]), norm_diff_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing Differences of Path Cost and Matrix Magnitude', fontsize = 'small')
+  plt.legend(loc = 'upper right')
+  plt.xlim([0,1.1])
+  pdf.savefig()
+  plt.close()
+
+  plt.plot(.4*np.ones(intercept_pass.shape[0]), intercept_pass, '.', color =  'g', label = 'Passing')
+  plt.plot(.8*np.ones(intercept_fail.shape[0]), intercept_fail, '.', color =  'r', label = 'Failing')
+  plt.title('Passing vs failing Ratio of Linreg offset intercept to length', fontsize = 'small')
   plt.legend(loc = 'upper right')
   plt.xlim([0,1.1])
   pdf.savefig()
