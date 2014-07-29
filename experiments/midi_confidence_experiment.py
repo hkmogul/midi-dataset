@@ -13,7 +13,7 @@ import csv
 import scipy.stats
 from matplotlib.backends.backend_pdf import PdfPages
 import scipy.signal
-
+from scipy.interpolate import interp1d
 
 
 ''' Start of post analysis of offset information to gain confidence measure in
@@ -51,7 +51,12 @@ def to_piano_cqt_npy(filename):
 def to_chroma_npy(filename):
     return os.path.splitext(filename)[0]+'-chroma.npy'
 
-
+def get_mp3_name(line):
+  ''' Reads line of data to get mp3 filename of string, used for preventing repeats
+      Example: gloria_gaynor-i_will_survive.mp3_vs_Gaynor, Gloria_I Will Survive.pdf
+      should come out as gloria_gaynor-i_will_survive.mp3 '''
+  sep = line.split('_vs_', 2)
+  return sep[0]
 # size = int(raw_input("Size of median filter (must be odd)? "))
 # if size % 2 == 0:
 #   size = size+1
@@ -125,10 +130,11 @@ intercept_pass = np.zeros((0,))
 intercept_fail = np.zeros((0,))
 # data building for machine learning
 amt_analysis = 0
-dataX = np.zeros((0,20))
+dataX = np.zeros((0,25))
 dataY = np.zeros((0,1))
 dataNames = np.empty((0,))
 
+song_names = np.empty((0,))
 path_to_may_30 = '../../CSV_Analysis/5-30-14_Alignment_Results.csv'
 beat_path = '../data/beat_info'
 if not os.path.exists(beat_path):
@@ -148,7 +154,12 @@ for row in csv_may:
 
   title_path = vs_filename_to_path(row[0])
   dataNames = np.append(dataNames, title_path)
-
+  mp3_name = get_mp3_name(row[0])
+  if mp3_name in song_names:
+    print "{} has already been compared, moving on.".format(mp3_name)
+    continue
+  else:
+    song_names = np.append(song_names, mp3_name)
   piano_out = os.path.join(BASE_PATH, 'midi-aligned-additive-dpmod-piano',title_path)
   success = int(row[2])
   mat_out = os.path.join('../../MIDI_Results_5-30',row[0]).replace('.mid', '.mat')+'.mat'
@@ -206,13 +217,12 @@ for row in csv_may:
   # first, get original midi path
   old_midi_path = os.path.join(BASE_PATH, 'Clean_MIDIs',title_path.replace('.mat','.mid'))
   aligned_midi_path = os.path.join('../../MIDI_Results_5-30',row[0]+'.mid')
+
   old_midi = pretty_midi.PrettyMIDI(old_midi_path)
   aligned_midi = pretty_midi.PrettyMIDI(aligned_midi_path)
-  offsets = alignment_analysis.get_offsets(aligned_midi, old_midi)
+  offsets, note_ons = alignment_analysis.get_offsets(aligned_midi, old_midi)
+  slope, intercept, r, p_err, stderr = alignment_analysis.get_regression_stats(aligned_midi, old_midi, offsets, note_ons)
 
-
-  slope, intercept, r, p_err, stderr = alignment_analysis.get_regression_stats(aligned_midi, old_midi, offsets)
-  # print "Maximum offset: {}".format(np.amax(offsets))
   print "Ratio of intercept from offset linreg to length of x axis: {}".format(intercept/offsets.shape[0])
   if success == 1:
     max_offset_pass = np.append(max_offset_pass, np.amax(offsets))
@@ -233,9 +243,17 @@ for row in csv_may:
   vec = np.append(vec, np.var(offsets))
   vec = np.append(vec, r)
   vec = np.append(vec, stderr)
+  vec = np.append(vec, intercept)
   # print "Slope of regression: {}".format(slope)
   # print "R-value of regression: {}".format(r)
-
+  #redo regression stats for first 10 percent of song
+  slope, intercept, r, p_err, stderr = alignment_analysis.get_regression_stats(aligned_midi, old_midi, offsets[0:offsets.shape[0]*.1], note_ons[0:offsets.shape[0]*.1])
+  vec = np.append(vec, np.var(offsets))
+  vec = np.append(vec, r)
+  vec = np.append(vec, stderr)
+  vec = np.append(vec, intercept)
+  print "Slope {}".format(slope)
+  print "Intercept {}".format(intercept)
 
   # data collection on the cost path
   cost_path = alignment_analysis.get_cost_path(p1,q1,sim_mat_1)
@@ -339,12 +357,12 @@ for row in csv_may:
   # save info on residuals
   if success == 1:
     para_res_pass = np.append(para_res_pass, np.var(residuals))
-    nondiag_pass = np.append(nondiag_pass, nondag)
+    # nondiag_pass = np.append(nondiag_pass, nondag)
     orig_res_pass = np.append(orig_res_pass, np.var(res_original))
     half_res_pass = np.append(half_res_pass, np.var(res_half))
   else:
     para_res_fail = np.append(para_res_fail, np.var(residuals))
-    nondiag_fail = np.append(nondiag_fail, nondag)
+    # nondiag_fail = np.append(nondiag_fail, nondag)
     orig_res_fail = np.append(orig_res_fail, np.var(res_original))
     half_res_fail = np.append(half_res_fail, np.var(res_half))
   amt_analysis += 4
@@ -353,14 +371,14 @@ for row in csv_may:
   vec = np.append(vec,np.var(res_original))
   vec = np.append(vec, np.var(res_half))
   # data collection on first 5% of offsets
-  first5 = offsets[0:int(.05*offsets.shape[0])]
-
+  first10 = offsets[0:int(.1*offsets.shape[0])]
+  print np.sum(first10)
   if success == 1:
-    first_offsets_pass = np.append(first_offsets_pass, float(np.amax(first5))/old_midi.get_end_time())
+    first_offsets_pass = np.append(first_offsets_pass, float(np.amax(first10))/old_midi.get_end_time())
   else:
-    first_offsets_fail = np.append(first_offsets_fail, float(np.amax(first5))/old_midi.get_end_time())
+    first_offsets_fail = np.append(first_offsets_fail, float(np.amax(first10))/old_midi.get_end_time())
   amt_analysis += 1
-  vec = np.append(vec, float(np.amax(first5))/old_midi.get_end_time())
+  vec = np.append(vec, float(np.amax(first10))/old_midi.get_end_time())
   # generate spectrogram of cost path and save it to see if there is anything worthwhile there
   # specgram_folder = '../data/cost_spectrograms'
   # if not os.path.exists(specgram_folder):
@@ -393,7 +411,6 @@ for row in csv_may:
     cosine_pass = np.append(cosine_pass, cosine)
   else:
     cosine_fail = np.append(cosine_fail, cosine)
-  amt_analysis += 1
 
   # beat track differences
   # cache for other runs
@@ -581,15 +598,6 @@ with PdfPages('Results_Comparison-Half_Length_Window.pdf') as pdf:
   pdf.savefig()
   plt.close()
 
-  # plt.figure(figsize = (4,4))
-  plt.plot(.4*np.ones(nondiag_pass.shape[0]), nondiag_pass, '.', color =  'g', label = 'Passing')
-  plt.plot(.8*np.ones(nondiag_fail.shape[0]), nondiag_fail, '.', color =  'r', label = 'Failing')
-  plt.title('Passing vs failing Amount of NonDiagonal Steps', fontsize = 'small')
-  plt.legend(loc = 'upper right')
-
-  plt.xlim([0,1.1])
-  pdf.savefig()
-  plt.close()
 
 
   # plt.figure(figsize = (4,4))
@@ -612,7 +620,7 @@ with PdfPages('Results_Comparison-Half_Length_Window.pdf') as pdf:
 
   plt.plot(.4*np.ones(first_offsets_pass.shape[0]), first_offsets_pass, '.', color =  'g', label = 'Passing')
   plt.plot(.8*np.ones(first_offsets_fail.shape[0]), first_offsets_fail, '.', color =  'r', label = 'Failing')
-  plt.title('Passing vs failing Maximums of first 5 percent of offsets', fontsize = 'small')
+  plt.title('Passing vs failing Maximums of first 10 percent of offsets', fontsize = 'small')
   plt.legend(loc = 'upper right')
   plt.xlim([0,1.1])
   pdf.savefig()
@@ -701,7 +709,7 @@ print "Minimum value of variance of Parab Resid applied to Original (Failing): {
 print "Percentage of Variances of Residuals applied to original cost paths < .000157 (passing) : {}".format((float(exRP.shape[0])/orig_res_pass.shape[0])*100)
 print "Percentage of Variances of Residuals applied to original cost paths < .000157 (failing) : {}".format((float(exRF.shape[0])/orig_res_fail.shape[0])*100)
 
-path_for_dataX = '../data/ML_info'
+path_for_dataX = '../data/ML_info-no_repeats'
 if not os.path.exists(path_for_dataX):
   os.mkdir(path_for_dataX)
 print dataY.shape

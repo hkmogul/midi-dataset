@@ -1,6 +1,6 @@
 import numpy as np
 import random
-
+import matplotlib.pyplot as plt
 def normalize_matrix(X):
   ''' Returns matrix with each column normalized to have mean 0 and standard dev 1 '''
   new_X = np.copy(X)
@@ -106,11 +106,13 @@ def pretty_print_prob(y_pred, y, prob, names):
   ''' For printing out probabilities of outputs and what they actually were '''
   for i in xrange(y_pred.shape[0]):
     print "Name of file: {}".format(names[i])
-    print "\t P(0): {0}, P(1): {1}".format(prob[i,0], prob[i,1])
+    print "\t P(0)= {0}, P(1)= {1}".format(prob[i,0], prob[i,1])
     print "\t RF classified as {0}, was actually {1}".format(y_pred[i],y[i])
     print "----------"
-def util_print(y_pred, y, prob, names = None):
-  ''' not so pretty, but useful print '''
+
+def util_print(y_pred, y, prob, names = None, save = False):
+  ''' not so pretty, but useful print. also an option to save '''
+  info = np.empty((y_pred.shape[0],2))
   if names is None:
     for i in xrange(y_pred.shape[0]):
       if y_pred[i] == y[i]:
@@ -118,6 +120,9 @@ def util_print(y_pred, y, prob, names = None):
       else:
         success = 0
       print '{0}, {1}'.format(max(prob[i,0],prob[i,1]), success)
+      info[i,0] = max(prob[i,0], prob[i,1])
+      info[i,1] = success
+
   else:
     for i in xrange(y_pred.shape[0]):
       if y_pred[i] == y[i]:
@@ -125,3 +130,36 @@ def util_print(y_pred, y, prob, names = None):
       else:
         success = 0
       print '{0}, {1}, {2}'.format(max(prob[i,0],prob[i,1]), success, names[i])
+      info[i,0] = max(prob[i,0], prob[i,1])
+      info[i,1] = success
+  if save:
+    # get final form into pdf
+    plt.plot(info[:,0],info[:,1], '.')
+    plt.ylim([-1,2])
+    plt.savefig('../comparison.pdf')
+
+
+def print_false_positives(y_pred, y, prob, names=None):
+  # info = np.empty((y_pred.shape[0],2))
+  if names is None:
+    for i in xrange(y_pred.shape[0]):
+      if y_pred[i] == 1 and y[i] == 0:
+        print '{0}'.format(max(prob[i,0],prob[i,1]))
+      # info[i,0] = max(prob[i,0], prob[i,1])
+      # info[i,1] = success
+
+  else:
+    for i in xrange(y_pred.shape[0]):
+      if y_pred[i] == 1 and y[i] == 0:
+        print '{0}, {1}'.format(max(prob[i,0],prob[i,1]),names[i])
+      # info[i,0] = max(prob[i,0], prob[i,1])
+      # info[i,1] = success
+def find_prob(y_true, prob):
+  prob_y = np.empty((y_true.shape))
+  for i in xrange(y_true.shape[0]):
+    if y_true[i] == 1:
+      prob_y[i] == prob[1]
+    else:
+      prob_y[i] == prob[0]
+
+  return prob_y
