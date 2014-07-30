@@ -44,6 +44,11 @@ print "SCORE OF TEST/RANDOM FIT RANDOM FOREST; TEST SIZE = {}".format(test_size)
 
 X_train, X_test, y_train, y_test, names_train, names_test = ml.cross_val_with_names(X, y, names, test_amt = test_size, random_seed = None)
 # single cross validation
+
+# ml.print_data_info(y_test, names_test)
+
+
+
 print "NUMBER OF TREES: {}".format(trees)
 clf2 = RandomForestClassifier(n_estimators = trees).fit(X_train, y_train)
 print "SCORE OF CROSS VALIDATION, {0} TRAINING SAMPLES: {1}".format(
@@ -100,7 +105,7 @@ precision_arr = np.empty((amt,))
 recall_arr = np.empty((amt,))
 fb_arr = np.empty((amt,))
 amt_success = np.empty((amt,)) # amount of test items the ML deems = 1
-
+auc_arr = np.empty((amt,))
 for i in xrange(amt):
   print "----- \n Iteration # {}".format(i)
   # use the index to generate random state because why not
@@ -122,8 +127,11 @@ for i in xrange(amt):
   fp, fn = ml.get_fp_fn(y_pred, y_test)
   # assign values to all arrays
   proba = clf2.predict_proba(X_test)
-  ml.print_false_positives(y_pred, y_test, proba, names_test)
-
+  # ml.print_false_positives(y_pred, y_test, proba, names_test)
+  proba_y = ml.find_prob(y_test, proba)
+  precision_curve, recall_curve, thresholds = metrics.precision_recall_curve(y_test, proba_y, pos_label = 1)
+  area = metrics.auc(recall_curve, precision_curve)
+  print "AUC: {}".format(area)
   scores[i] = s
   false_pos[i] = fp
   false_neg[i] = fn
@@ -131,9 +139,9 @@ for i in xrange(amt):
   recall_arr[i] = recall
   fb_arr[i] = fbeta_score
   amt_success[i] = np.argwhere(y_pred).shape[0]
+  auc_arr[i] = area
 
-
-print "Amount of test datapoints per interation: {}".format(y_test.shape[0])
+print "Amount of test datapoints per iteration: {}".format(y_test.shape[0])
 print "AVERAGE SCORE IN MULTIPLE: {}".format(np.mean(scores))
 print "Maximum score: {}".format(np.amax(scores))
 print "AVERAGE AMT OF FALSE POSITIVES: {}".format(np.mean(false_pos))
@@ -142,7 +150,7 @@ print "RATE OF FALSE POSITIVES PER TEST SIZE: {}".format(np.mean(false_pos)/y_te
 print "RATE OF FALSE POSITIVES PER AMT OF POSITIVES: {}".format(np.mean(false_pos)/np.mean(amt_success))
 print "AVERAGE RECALL: {}".format(np.mean(recall_arr))
 print "AVERAGE F-BETA: {}".format(np.mean(fbeta_arr))
-
+print "Average AUC: {}".format(np.mean(auc_arr))
 
 
 

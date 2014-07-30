@@ -163,3 +163,7 @@ def find_prob(y_true, prob):
       prob_y[i] == prob[0]
 
   return prob_y
+
+def print_data_info(data_y, data_names):
+  for i in xrange(data_y.shape[0]):
+    print "{0}, {1}".format(data_names[i], data_y[i])
