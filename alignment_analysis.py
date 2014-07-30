@@ -57,7 +57,7 @@ def get_offsets(m_aligned, m):
   last = min(note_ons.shape[0],aligned_note_ons.shape[0])
   for i in xrange(last):
     diff = np.append(diff,np.array([aligned_note_ons[i]-note_ons[i]]))
-  return diff
+  return diff, note_ons[0:last]
 
 def get_cost_path(p,q,similarity_matrix):
   ''' Forms and returns the cost per step of alignment path '''
@@ -66,15 +66,18 @@ def get_cost_path(p,q,similarity_matrix):
     cost_path = np.append(cost_path, similarity_matrix[p[i],q[i]])
   return cost_path
 
-def get_regression_stats(m_aligned,m, offsets = None):
+def get_regression_stats(m_aligned,m, offsets = None, note_ons = None):
   ''' Used for performing linear regression stats on the aligned offsets '''
-  if offsets == None:
-    offsets = get_offsets(m_aligned, m)
+  if offsets == None or note_ons == None:
+    offsets, note_ons = get_offsets(m_aligned, m)
 
-  note_ons = np.array([note.start for instrument in m.instruments for note in instrument.notes])
-  aligned_note_ons = np.array([note.start for instrument in m_aligned.instruments for note in instrument.notes])
-  last = min(note_ons.shape[0],aligned_note_ons.shape[0])
-  slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(note_ons[0:(last)],offsets)
+  else:
+    note_ons = np.array([note.start for instrument in m.instruments for note in instrument.notes])
+    aligned_note_ons = np.array([note.start for instrument in m_aligned.instruments for note in instrument.notes])
+    last = min(note_ons.shape[0],aligned_note_ons.shape[0])
+
+  last = min(note_ons.shape[0], offsets.shape[0])
+  slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(note_ons[0:last-1],offsets[0:last-1])
   return slope, intercept, r_value, p_value, std_err
 
 
@@ -146,3 +149,7 @@ def truncate_greater_vec(vec1, vec2):
       vec2 = vec2[:-1]
       amt+=1
     return vec1, vec2, amt
+
+def util_print(data_y, data_names):
+  for i in xrange(data_y.shape[0]):
+    print '{0}, {1}'.format(data_names[i], data_y[i])

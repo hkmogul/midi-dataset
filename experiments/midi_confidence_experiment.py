@@ -153,13 +153,13 @@ for row in csv_may:
   #   continue
 
   title_path = vs_filename_to_path(row[0])
-  dataNames = np.append(dataNames, title_path)
   mp3_name = get_mp3_name(row[0])
   if mp3_name in song_names:
     print "{} has already been compared, moving on.".format(mp3_name)
     continue
   else:
     song_names = np.append(song_names, mp3_name)
+    dataNames = np.append(dataNames, title_path)
   piano_out = os.path.join(BASE_PATH, 'midi-aligned-additive-dpmod-piano',title_path)
   success = int(row[2])
   mat_out = os.path.join('../../MIDI_Results_5-30',row[0]).replace('.mid', '.mat')+'.mat'
@@ -465,6 +465,8 @@ for row in csv_may:
 
 
   dataY = np.vstack((dataY, np.array([success])))
+
+  alignment_analysis.util_print(dataY, dataNames)
   print "-----------------------------"
 with PdfPages('Results_Comparison-Half_Length_Window.pdf') as pdf:
 
