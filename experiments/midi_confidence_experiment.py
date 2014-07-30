@@ -130,7 +130,7 @@ intercept_pass = np.zeros((0,))
 intercept_fail = np.zeros((0,))
 # data building for machine learning
 amt_analysis = 0
-dataX = np.zeros((0,25))
+dataX = np.zeros((0,24))
 dataY = np.zeros((0,1))
 dataNames = np.empty((0,))
 
@@ -210,7 +210,7 @@ for row in csv_may:
   print "DIFF IN SCORE VS MATRIX MAGNITUDE: {}".format(abs(norm_mat1 - score1))
   amt_analysis += 4
   vec = np.append(vec, score1)
-  vec = np.append(vec, uw_score1)
+  # vec = np.append(vec, uw_score1)
   vec = np.append(vec, norm_mat1)
   vec = np.append(vec, path_diff)
   # linear regression on offset
@@ -286,24 +286,24 @@ for row in csv_may:
   xf = librosa.frames_to_time(x)
   # print p
   # parab = p[0]*x**2+ p[1]*x+p[2]
-  plt.subplot2grid((2,1),(0,0))
-  plt.plot(librosa.frames_to_time(np.arange(start= 0,stop = cost_path.shape[0])),cost_path)
-  if success == 1:
-    plt.title("ORIGINAL-SUCCESS")
-  else:
-    plt.title("ORIGINAL-FAIL")
-  plt.subplot2grid((2,1),(1,0))
-  plt.plot(xf,cost_var, '--', label = 'Remaining After filter')
-
-
-  if success == 1:
-    plt.title(str(size)+'-Excitation-'+title_path)
-    plt.savefig(os.path.join(var_output_folder,row[0]+'-SUCCESS.pdf'))
-    plt.close()
-  else:
-    plt.title(str(size)+'-Excitation-'+title_path)
-    plt.savefig(os.path.join(var_output_folder,row[0]+'-FAIL.pdf'))
-    plt.close()
+  # plt.subplot2grid((2,1),(0,0))
+  # plt.plot(librosa.frames_to_time(np.arange(start= 0,stop = cost_path.shape[0])),cost_path)
+  # if success == 1:
+  #   plt.title("ORIGINAL-SUCCESS")
+  # else:
+  #   plt.title("ORIGINAL-FAIL")
+  # plt.subplot2grid((2,1),(1,0))
+  # plt.plot(xf,cost_var, '--', label = 'Remaining After filter')
+  # 
+  #
+  # if success == 1:
+  #   plt.title(str(size)+'-Excitation-'+title_path)
+  #   plt.savefig(os.path.join(var_output_folder,row[0]+'-SUCCESS.pdf'))
+  #   plt.close()
+  # else:
+  #   plt.title(str(size)+'-Excitation-'+title_path)
+  #   plt.savefig(os.path.join(var_output_folder,row[0]+'-FAIL.pdf'))
+  #   plt.close()
 
   half = size/2
   if half % 2 == 0:
@@ -330,25 +330,25 @@ for row in csv_may:
   x = np.arange(start= 0,stop = cost_path_filtered.shape[0])
   # print p
   # parab = p[0]*x**2+ p[1]*x+p[2]
-  plt.subplot2grid((2,1),(0,0))
-  plt.plot(np.arange(start= 0,stop = cost_path.shape[0]),cost_path,x,parab, '--')
-  if success == 1:
-    plt.title("ORIGINAL-SUCCESS")
-  else:
-    plt.title("ORIGINAL-FAIL")
-  plt.subplot2grid((2,1),(1,0))
-  plt.plot(xf,cost_path_filtered, xf, parab, '--', label = 'Parabolic Regression')
-
-  if not os.path.exists('../Filter_Check-Half'):
-    os.mkdir('../Filter_Check-Half')
-  if success == 1:
-    plt.title(str(size)+'-FILTERED-'+title_path)
-    plt.savefig(os.path.join('../Filter_Check-Half',row[0]+'-SUCCESS.pdf'))
-    plt.close()
-  else:
-    plt.title(str(size)+'-FILTERED-'+title_path)
-    plt.savefig(os.path.join('../Filter_Check-Half',row[0]+'-FAIL.pdf'))
-    plt.close()
+  # plt.subplot2grid((2,1),(0,0))
+  # plt.plot(np.arange(start= 0,stop = cost_path.shape[0]),cost_path,x,parab, '--')
+  # if success == 1:
+  #   plt.title("ORIGINAL-SUCCESS")
+  # else:
+  #   plt.title("ORIGINAL-FAIL")
+  # plt.subplot2grid((2,1),(1,0))
+  # plt.plot(xf,cost_path_filtered, xf, parab, '--', label = 'Parabolic Regression')
+  #
+  # if not os.path.exists('../Filter_Check-Half'):
+  #   os.mkdir('../Filter_Check-Half')
+  # if success == 1:
+  #   plt.title(str(size)+'-FILTERED-'+title_path)
+  #   plt.savefig(os.path.join('../Filter_Check-Half',row[0]+'-SUCCESS.pdf'))
+  #   plt.close()
+  # else:
+  #   plt.title(str(size)+'-FILTERED-'+title_path)
+  #   plt.savefig(os.path.join('../Filter_Check-Half',row[0]+'-FAIL.pdf'))
+  #   plt.close()
   horiz, vert = alignment_analysis.get_non_diagonal_steps(p1,q1)
   nondag = horiz+vert
 
@@ -466,7 +466,6 @@ for row in csv_may:
 
   dataY = np.vstack((dataY, np.array([success])))
 
-  alignment_analysis.util_print(dataY, dataNames)
   print "-----------------------------"
 with PdfPages('Results_Comparison-Half_Length_Window.pdf') as pdf:
 
