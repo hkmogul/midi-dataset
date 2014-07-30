@@ -15,6 +15,7 @@ import ml_utility as ml
 
 
 mat_path = '../data/ML_info-no_repeats/X_and_y.mat'
+# mat_path = '../data/ML_info/X_and_y.mat'
 data = scipy.io.loadmat(mat_path)
 Xn = data['X']
 print Xn.shape
@@ -32,12 +33,12 @@ clf.fit(X,y)
 print "SCORE OF WHOLE FIT"
 print clf.score(X,y)
 print "----------"
-test_size = .2
-clf_svm = svm.SVC(gamma = .001, C = 200)
+test_size = .25
+# clf_svm = svm.SVC(gamma = .001, C = 200)
 X_train, X_test, y_train, y_test = cross_validation.train_test_split(X,
                                     y, test_size=test_size, random_state=0)
-clf_svm.fit(X_train, y_train)
-print "SCORE OF CROSS VAL SVC: {}".format(clf_svm.score(X_test, y_test))
+# clf_svm.fit(X_train, y_train)
+# print "SCORE OF CROSS VAL SVC: {}".format(clf_svm.score(X_test, y_test))
 # cross validation
 print "SCORE OF TEST/RANDOM FIT RANDOM FOREST; TEST SIZE = {}".format(test_size)
 
@@ -56,8 +57,12 @@ print "SCORE OF CROSS VALIDATION, {0} TRAINING SAMPLES: {1}".format(
                                                       clf2.score(X_test, y_test))
 y_pred = clf2.predict(X_test)
 proba = clf2.predict_proba(X_test)
-proba_y = ml.find_prob(y_test, proba)
-precision_curve, recall_curve, thresholds = metrics.precision_recall_curve(y_test, proba_y, pos_label = 1)
+# proba_y = ml.find_prob(y_test, proba)
+precision_curve, recall_curve, thresholds = metrics.precision_recall_curve(y_test, proba[:,1], pos_label = 1)
+plt.plot(precision_curve, recall_curve, '.')
+plt.savefig("precision-recall.pdf")
+plt.close()
+print thresholds
 area = metrics.auc(recall_curve, precision_curve)
 print "AUC: {}".format(area)
 # ml.util_print(y_pred, y_test, proba, names_test, save = True)
@@ -85,11 +90,23 @@ prec, rec = ml.get_precision_recall(y_pred, y_test)
 # print "Self calculated precision: {}".format(prec)
 # print "Self calculated recall: {}".format(rec)
 print "----------"
+# fpr, tpr, thresholds = metrics.roc_curve(y, pred, pos_label=2)
 
-
-
-
-
+roc_auc = metrics.roc_auc_score(y_test, proba[:,1])
+print "ROC-AUC Score: {}".format(roc_auc)
+fpr, tpr, roc_thresholds = metrics.roc_curve(y_test, proba[:,1])
+print roc_thresholds
+plt.figure()
+plt.plot(fpr, tpr, label='ROC curve (area = %0.2f)' % roc_auc)
+plt.plot([0, 1], [0, 1], 'k--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver operating characteristic')
+plt.legend(loc="lower right")
+plt.savefig('roc-plot.pdf')
+plt.close()
 
 
 # multiple cross validation
@@ -106,6 +123,9 @@ recall_arr = np.empty((amt,))
 fb_arr = np.empty((amt,))
 amt_success = np.empty((amt,)) # amount of test items the ML deems = 1
 auc_arr = np.empty((amt,))
+roc_auc_arr = np.empty((amt,))
+
+
 for i in xrange(amt):
   print "----- \n Iteration # {}".format(i)
   # use the index to generate random state because why not
@@ -128,10 +148,14 @@ for i in xrange(amt):
   # assign values to all arrays
   proba = clf2.predict_proba(X_test)
   # ml.print_false_positives(y_pred, y_test, proba, names_test)
-  proba_y = ml.find_prob(y_test, proba)
-  precision_curve, recall_curve, thresholds = metrics.precision_recall_curve(y_test, proba_y, pos_label = 1)
+  # proba_y = ml.find_prob(y_test, proba)
+  precision_curve, recall_curve, thresholds = metrics.precision_recall_curve(y_test, proba[:,1], pos_label = 1)
   area = metrics.auc(recall_curve, precision_curve)
-  print "AUC: {}".format(area)
+  print "Precision-Recall AUC: {}".format(area)
+  fpr, tpr, roc_thresholds = metrics.roc_curve(y_test, proba[:,1])
+  roc_auc = metrics.roc_auc_score(y_test, proba[:,1])
+  print "ROC-AUC Score: {}".format(roc_auc)
+  print "# of Thresholds: {}".format(roc_thresholds.shape[0])
   scores[i] = s
   false_pos[i] = fp
   false_neg[i] = fn
@@ -140,19 +164,21 @@ for i in xrange(amt):
   fb_arr[i] = fbeta_score
   amt_success[i] = np.argwhere(y_pred).shape[0]
   auc_arr[i] = area
-
+  roc_auc_arr[i] = roc_auc
 print "Amount of test datapoints per iteration: {}".format(y_test.shape[0])
 print "AVERAGE SCORE IN MULTIPLE: {}".format(np.mean(scores))
 print "Maximum score: {}".format(np.amax(scores))
 print "AVERAGE AMT OF FALSE POSITIVES: {}".format(np.mean(false_pos))
+print "Minimum # of false positives: {}".format(np.amin(false_pos))
 print "AVERAGE PRECISION: {}".format(np.mean(precision_arr))
 print "RATE OF FALSE POSITIVES PER TEST SIZE: {}".format(np.mean(false_pos)/y_test.shape[0])
 print "RATE OF FALSE POSITIVES PER AMT OF POSITIVES: {}".format(np.mean(false_pos)/np.mean(amt_success))
 print "AVERAGE RECALL: {}".format(np.mean(recall_arr))
 print "AVERAGE F-BETA: {}".format(np.mean(fbeta_arr))
 print "Average AUC: {}".format(np.mean(auc_arr))
-
-
+print "Min AUC: {}".format(np.amin(auc_arr))
+print "Average ROC-AUC: {}".format(np.mean(roc_auc_arr))
+print "Min ROC-AUC: {}".format(np.amin(roc_auc_arr))
 
 print "----------"
 # print "Repeating cross validation experiment for SVC"
