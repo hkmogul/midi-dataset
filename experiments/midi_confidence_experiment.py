@@ -130,7 +130,7 @@ intercept_pass = np.zeros((0,))
 intercept_fail = np.zeros((0,))
 # data building for machine learning
 amt_analysis = 0
-dataX = np.zeros((0,24))
+dataX = np.zeros((0,20))
 dataY = np.zeros((0,1))
 dataNames = np.empty((0,))
 
@@ -142,8 +142,6 @@ if not os.path.exists(beat_path):
 may_30_file = open(path_to_may_30)
 csv_may = csv.reader(may_30_file)
 csv_may.next()
-
-
 
 
 for row in csv_may:
@@ -207,12 +205,13 @@ for row in csv_may:
     piano_diff_fail = np.append(piano_diff_fail, path_diff)
     norm_diff_fail = np.append(norm_diff_fail, abs(norm_mat1 - score1))
 
-  print "DIFF IN SCORE VS MATRIX MAGNITUDE: {}".format(abs(norm_mat1 - score1))
+  # print "DIFF IN SCORE VS MATRIX MAGNITUDE: {}".format(abs(norm_mat1 - score1))
   amt_analysis += 4
   vec = np.append(vec, score1)
   # vec = np.append(vec, uw_score1)
   vec = np.append(vec, norm_mat1)
-  vec = np.append(vec, path_diff)
+  vec = np.append(vec, abs(norm_mat1 - score1))
+  # vec = np.append(vec, path_diff)
   # linear regression on offset
   # first, get original midi path
   old_midi_path = os.path.join(BASE_PATH, 'Clean_MIDIs',title_path.replace('.mat','.mid'))
@@ -223,35 +222,37 @@ for row in csv_may:
   offsets, note_ons = alignment_analysis.get_offsets(aligned_midi, old_midi)
   slope, intercept, r, p_err, stderr = alignment_analysis.get_regression_stats(aligned_midi, old_midi, offsets, note_ons)
 
-  print "Ratio of intercept from offset linreg to length of x axis: {}".format(intercept/offsets.shape[0])
+  # print "Ratio of intercept from offset linreg to length of x axis: {}".format(intercept/offsets.shape[0])
   if success == 1:
-    max_offset_pass = np.append(max_offset_pass, np.amax(offsets))
+    max_offset_pass = np.append(max_offset_pass, (np.amax(offsets)-np.amin(offsets))/aligned_midi.get_end_time())
     offset_deviation_pass = np.append(offset_deviation_pass, np.std(offsets))
     r_offset_pass = np.append(r_offset_pass,r)
-    std_err_pass = np.append(std_err_pass, stderr)
+    std_err_pass = np.append(std_err_pass, (offsets[offsets.shape[0]-1]-offsets[0])/aligned_midi.get_end_time())
     intercept_pass = np.append(intercept_pass, intercept/offsets.shape[0])
   else:
-    max_offset_fail = np.append(max_offset_fail, np.amax(offsets))
+    max_offset_fail = np.append(max_offset_fail, (np.amax(offsets)-np.amin(offsets))/aligned_midi.get_end_time())
     offset_deviation_fail = np.append(offset_deviation_fail, np.std(offsets))
     r_offset_fail = np.append(r_offset_fail, r)
-    std_err_fail = np.append(std_err_fail, stderr)
+    std_err_fail = np.append(std_err_fail, (offsets[offsets.shape[0]-1]-offsets[0])/aligned_midi.get_end_time())
     intercept_fail = np.append(intercept_fail, intercept/offsets.shape[0])
 
 
   amt_analysis += 4
   # vec = np.append(vec, np.amax(offsets))
-  vec = np.append(vec, np.var(offsets))
+  # vec = np.append(vec, np.var(offsets))
+  print "Difference between max and min offsets (normalized): {}".format((np.amax(offsets)-np.amin(offsets))/aligned_midi.get_end_time())
+  print "Difference between first and last offsets (normalized): {}".format((offsets[offsets.shape[0]-1]-offsets[0])/aligned_midi.get_end_time())
   vec = np.append(vec, r)
   vec = np.append(vec, stderr)
   vec = np.append(vec, intercept)
   # print "Slope of regression: {}".format(slope)
   # print "R-value of regression: {}".format(r)
   #redo regression stats for first 10 percent of song
-  slope, intercept, r, p_err, stderr = alignment_analysis.get_regression_stats(aligned_midi, old_midi, offsets[0:offsets.shape[0]*.1], note_ons[0:offsets.shape[0]*.1])
+  slope, intercept, r, p_err, stderr = alignment_analysis.get_regression_stats(aligned_midi, old_midi, offsets[0:offsets.shape[0]*.2], note_ons[0:offsets.shape[0]*.2])
   vec = np.append(vec, np.var(offsets))
   vec = np.append(vec, r)
   vec = np.append(vec, stderr)
-  vec = np.append(vec, intercept)
+  vec = np.append(vec, intercept/old_midi.get_end_time())
   print "Slope {}".format(slope)
   print "Intercept {}".format(intercept)
 
@@ -264,7 +265,7 @@ for row in csv_may:
     cost_std_fail = np.append(cost_std_fail, np.std(cost_path))
     cost_var_fail = np.append(cost_var_fail, np.var(cost_path))
   amt_analysis += 2
-  vec = np.append(vec, np.std(cost_path))
+  # vec = np.append(vec, np.std(cost_path))
   vec = np.append(vec, np.var(cost_path))
   cost_path_filtered = np.copy(cost_path)
   size = cost_path_filtered.shape[0]/2
@@ -294,7 +295,7 @@ for row in csv_may:
   #   plt.title("ORIGINAL-FAIL")
   # plt.subplot2grid((2,1),(1,0))
   # plt.plot(xf,cost_var, '--', label = 'Remaining After filter')
-  # 
+  #
   #
   # if success == 1:
   #   plt.title(str(size)+'-Excitation-'+title_path)
@@ -316,7 +317,7 @@ for row in csv_may:
     filt_cost_std_fail = np.append(filt_cost_std_fail, np.std(cost_path_filtered))
     filt_cost_var_fail = np.append(filt_cost_var_fail, np.var(cost_path_filtered))
   amt_analysis += 2
-  vec = np.append(vec, np.std(cost_path_filtered))
+  # vec = np.append(vec, np.std(cost_path_filtered))
   vec = np.append(vec, np.var(cost_path_filtered))
 
 
@@ -369,7 +370,7 @@ for row in csv_may:
   vec = np.append(vec, np.var(residuals))
   # vec = np.append(vec, nondag)
   vec = np.append(vec,np.var(res_original))
-  vec = np.append(vec, np.var(res_half))
+  # vec = np.append(vec, np.var(res_half))
   # data collection on first 5% of offsets
   first10 = offsets[0:int(.1*offsets.shape[0])]
   print np.sum(first10)
@@ -417,7 +418,6 @@ for row in csv_may:
   if not os.path.exists(os.path.join(beat_path, row[0]+'.mat')):
     m_tempo, m_beats = librosa.beat.beat_track(midi_audio, fs)
     a_tempo, a_beats = librosa.beat.beat_track(mp3_audio, fs)
-    # TODO : temp fix to get rid of padding in saved mats
     scipy.io.savemat(os.path.join(beat_path, row[0]+'.mat'), {'m_beats': m_beats,
                                                              'm_tempo': m_tempo,
                                                              'a_beats': a_beats,
@@ -428,28 +428,20 @@ for row in csv_may:
     beat_mat = scipy.io.loadmat(os.path.join(beat_path, row[0]+'.mat'))
     m_tempo = beat_mat['m_tempo'][0,0]
     m_beats = beat_mat['m_beats'][0,:]
-    # TODO: replace lower 1 line with upper after initial runthru
-    # m_tempo, m_beats = librosa.beat.beat_track(midi_audio, fs)
-
     a_tempo = beat_mat['a_tempo'][0,0]
     a_beats = beat_mat['a_beats'][0,:]
-    # resave fixed form
-    # scipy.io.savemat(os.path.join(beat_path, row[0]+'.mat'), {'m_beats': m_beats,
-    #                                                          'm_tempo': m_tempo,
-    #                                                          'a_beats': a_beats,
-    #                                                          'a_tempo': a_tempo})
-
 
   m_beatsP, a_beatsP, amt_pad = alignment_analysis.pad_lesser_vec(m_beats, a_beats)
   m_beats, a_beats, amt_trunc = alignment_analysis.truncate_greater_vec(m_beats, a_beats)
   beat_diff = librosa.frames_to_time(np.absolute(np.subtract(m_beats, a_beats)))
+  temp_modDiv = (max(m_tempo, a_tempo)/min(m_tempo, a_tempo))
   temp_mod = abs((m_tempo%2)-(a_tempo%2))
   beat_cosine = np.dot(m_beats, a_beats)/(np.linalg.norm(m_beats)*np.linalg.norm(a_beats))
   if success == 1:
-    tempo_diff_pass = np.append(tempo_diff_pass, temp_mod)
+    tempo_diff_pass = np.append(tempo_diff_pass, temp_modDiv)
     beat_cos_pass = np.append(beat_cos_pass, beat_cosine)
   else:
-    tempo_diff_fail = np.append(tempo_diff_fail, temp_mod)
+    tempo_diff_fail = np.append(tempo_diff_fail, temp_modDiv)
     beat_cos_fail = np.append(beat_cos_fail, beat_cosine)
 
   # aggregate features and targets
@@ -458,8 +450,13 @@ for row in csv_may:
   vec = np.append(vec, temp_mod)
   vec = np.append(vec, abs(m_tempo-a_tempo))
   vec = np.append(vec, amt_pad)
+  dataVec = alignment_analysis.get_X(mat_out, mp3_source, old_midi_path, aligned_midi_path)
+  print "INCOMING CHECK IF THIS WORKS"
+  print np.subtract(vec, dataVec)
+  print "__________"
   print "DIFF IN TEMPO : {}".format(abs(m_tempo-a_tempo))
   print "DIFF IN TEMPO MOD 2 EACH OPERAND: {}".format(abs((m_tempo%2)-(a_tempo%2)))
+  print "TempModDiv {}".format(temp_modDiv)
   print "EXTRA BEATS NECESSARY: {}".format(amt_pad)
   dataX = np.vstack((dataX, vec))
 
@@ -507,7 +504,7 @@ with PdfPages('Results_Comparison-Half_Length_Window.pdf') as pdf:
 
   plt.plot(.4*np.ones(max_offset_pass.shape[0]), max_offset_pass, '.', color =  'g', label = 'Passing')
   plt.plot(.8*np.ones(max_offset_fail.shape[0]), max_offset_fail, '.', color =  'r', label = 'Failing')
-  plt.title('Passing vs failing Maximum Offsets', fontsize = 'small')
+  plt.title('Passing vs failing Diff of Max and Min of Offsets', fontsize = 'small')
   plt.legend(loc = 'upper right')
 
   plt.xlim([0,1.1])
@@ -541,7 +538,7 @@ with PdfPages('Results_Comparison-Half_Length_Window.pdf') as pdf:
 
   plt.plot(.4*np.ones(std_err_pass.shape[0]), std_err_pass, '.', color =  'g', label = 'Passing')
   plt.plot(.8*np.ones(std_err_fail.shape[0]), std_err_fail, '.', color =  'r', label = 'Failing')
-  plt.title('Passing vs failing Standard Error of LinReg', fontsize = 'small')
+  plt.title('Passing vs failing Difference of First and Last of Offsets', fontsize = 'small')
   plt.legend(loc = 'upper right')
 
   plt.xlim([0,1.1])
@@ -674,42 +671,49 @@ with PdfPages('Results_Comparison-Half_Length_Window.pdf') as pdf:
   plt.xlim([0,1.1])
   pdf.savefig()
   plt.close()
+#
+#
+# condition = filt_cost_var_pass > .00013
+# conditionF = filt_cost_var_fail > .00013
+# exP = np.extract(condition, filt_cost_var_pass)
+# exF = np.extract(conditionF, filt_cost_var_fail)
+#
+# conditionS = cqt_scores_pass < .04099
+# conditionSF = cqt_scores_fail < .04099
+# exSP = np.extract(conditionS, cqt_scores_pass)
+# exSF = np.extract(conditionSF, cqt_scores_fail)
+#
+#
+# condition_origP = orig_res_pass < .000157
+# condition_origF = orig_res_fail < .000157
+# exRP = np.extract(condition_origP, orig_res_pass)
+# exRF = np.extract(condition_origF, orig_res_fail)
+#
+# arg1 =  np.argwhere(condition_origP)
+# arg2 =  np.argwhere(conditionS)
+# inCommon = np.intersect1d(arg1,arg2)
 
-
-condition = filt_cost_var_pass > .00013
-conditionF = filt_cost_var_fail > .00013
-exP = np.extract(condition, filt_cost_var_pass)
-exF = np.extract(conditionF, filt_cost_var_fail)
-
-conditionS = cqt_scores_pass < .04099
-conditionSF = cqt_scores_fail < .04099
-exSP = np.extract(conditionS, cqt_scores_pass)
-exSF = np.extract(conditionSF, cqt_scores_fail)
-
-
-condition_origP = orig_res_pass < .000157
-condition_origF = orig_res_fail < .000157
-exRP = np.extract(condition_origP, orig_res_pass)
-exRF = np.extract(condition_origF, orig_res_fail)
-
-arg1 =  np.argwhere(condition_origP)
-arg2 =  np.argwhere(conditionS)
-inCommon = np.intersect1d(arg1,arg2)
-
-
-print "Songs in common of weighted score acceptance and parabolic residual acceptance: {}".format(inCommon.shape[0])
-print "Amount of remaining acceptances by weighted score: {}".format(arg2.shape[0]-inCommon.shape[0])
-print "Amount of remaining acceptances by parabolic residuals: {}".format(arg1.shape[0]-inCommon.shape[0])
-
-print "Percentage of passing variances greater than .00013: {}".format((float(exP.shape[0])/filt_cost_var_pass.shape[0])*100)
-print "Percentage of failing variances greater than .00013: {}".format((float(exF.shape[0])/filt_cost_var_fail.shape[0])*100)
-print np.percentile(filt_cost_var_pass, 90)
-print "Percentage of passing scores less than .04099: {}".format((float(exSP.shape[0])/cqt_scores_pass.shape[0])*100)
-print "Percentage of failing scores less than .04099: {}".format((float(exSF.shape[0])/cqt_scores_fail.shape[0])*100)
-print "Minimum value of variance of Parab Resid applied to Original (Failing): {}".format(np.amin(orig_res_fail))
-print "Percentage of Variances of Residuals applied to original cost paths < .000157 (passing) : {}".format((float(exRP.shape[0])/orig_res_pass.shape[0])*100)
-print "Percentage of Variances of Residuals applied to original cost paths < .000157 (failing) : {}".format((float(exRF.shape[0])/orig_res_fail.shape[0])*100)
-
+#
+# print "Songs in common of weighted score acceptance and parabolic residual acceptance: {}".format(inCommon.shape[0])
+# print "Amount of remaining acceptances by weighted score: {}".format(arg2.shape[0]-inCommon.shape[0])
+# print "Amount of remaining acceptances by parabolic residuals: {}".format(arg1.shape[0]-inCommon.shape[0])
+#
+# print "Percentage of passing variances greater than .00013: {}".format((float(exP.shape[0])/filt_cost_var_pass.shape[0])*100)
+# print "Percentage of failing variances greater than .00013: {}".format((float(exF.shape[0])/filt_cost_var_fail.shape[0])*100)
+# print np.percentile(filt_cost_var_pass, 90)
+# print "Percentage of passing scores less than .04099: {}".format((float(exSP.shape[0])/cqt_scores_pass.shape[0])*100)
+# print "Percentage of failing scores less than .04099: {}".format((float(exSF.shape[0])/cqt_scores_fail.shape[0])*100)
+# print "Minimum value of variance of Parab Resid applied to Original (Failing): {}".format(np.amin(orig_res_fail))
+# print "Percentage of Variances of Residuals applied to original cost paths < .000157 (passing) : {}".format((float(exRP.shape[0])/orig_res_pass.shape[0])*100)
+# print "Percentage of Variances of Residuals applied to original cost paths < .000157 (failing) : {}".format((float(exRF.shape[0])/orig_res_fail.shape[0])*100)
+ratio_min = np.amin(norm_diff_pass)
+print ratio_min
+conditionP = norm_diff_pass < ratio_min
+conditionF = norm_diff_fail < ratio_min
+exP = np.extract(conditionP, norm_diff_pass)
+exF = np.extract(conditionF, norm_diff_fail)
+print "percent of extracted pass {}".format(float(exP.shape[0])/norm_diff_pass.shape[0])
+print "percent of extracted fail {}".format(float(exF.shape[0])/norm_diff_fail.shape[0])
 path_for_dataX = '../data/ML_info-no_repeats'
 if not os.path.exists(path_for_dataX):
   os.mkdir(path_for_dataX)
