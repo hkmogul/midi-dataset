@@ -167,3 +167,20 @@ def find_prob(y_true, prob):
 def print_data_info(data_y, data_names):
   for i in xrange(data_y.shape[0]):
     print "{0}, {1}".format(data_names[i], data_y[i])
+
+def output_with_threshold(prob_y, threshold = .5):
+  output = np.empty(prob_y.shape)
+  for i in xrange(prob_y.shape[0]):
+    if prob_y[i] >= threshold:
+      output[i] = 1
+    else:
+      output[i] = 0
+  return output
+
+def get_accuracy(y_true, y_pred):
+  amt_correct = 0
+  amt_total = y_pred.shape[0]
+  for i in xrange(y_pred.shape[0]):
+    if y_true[i] == y_pred[i]:
+      amt_correct += 1
+  return float(amt_correct)/amt_total
