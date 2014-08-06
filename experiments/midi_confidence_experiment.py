@@ -130,10 +130,11 @@ intercept_pass = np.zeros((0,))
 intercept_fail = np.zeros((0,))
 # data building for machine learning
 amt_analysis = 0
-dataX = np.zeros((0,20))
+dataX = np.zeros((0,15))
 dataY = np.zeros((0,1))
 dataNames = np.empty((0,))
-
+feature_labels = np.empty((0,))
+firstRun = True
 song_names = np.empty((0,))
 path_to_may_30 = '../../CSV_Analysis/5-30-14_Alignment_Results.csv'
 beat_path = '../data/beat_info'
@@ -158,6 +159,8 @@ for row in csv_may:
   else:
     song_names = np.append(song_names, mp3_name)
     dataNames = np.append(dataNames, title_path)
+  # song_names = np.append(song_names, mp3_name)
+  # dataNames = np.append(dataNames, title_path)
   piano_out = os.path.join(BASE_PATH, 'midi-aligned-additive-dpmod-piano',title_path)
   success = int(row[2])
   mat_out = os.path.join('../../MIDI_Results_5-30',row[0]).replace('.mid', '.mat')+'.mat'
@@ -208,6 +211,10 @@ for row in csv_may:
   # print "DIFF IN SCORE VS MATRIX MAGNITUDE: {}".format(abs(norm_mat1 - score1))
   amt_analysis += 4
   vec = np.append(vec, score1)
+  if firstRun:
+    feature_labels[0] = 'Weighted Score'
+    feature_labels[1] = 'Matrix Magnitude'
+    feature_labesl[2] = 'Difference in Score and Magnitude'
   # vec = np.append(vec, uw_score1)
   vec = np.append(vec, norm_mat1)
   vec = np.append(vec, abs(norm_mat1 - score1))
@@ -244,7 +251,11 @@ for row in csv_may:
   print "Difference between first and last offsets (normalized): {}".format((offsets[offsets.shape[0]-1]-offsets[0])/aligned_midi.get_end_time())
   vec = np.append(vec, r)
   vec = np.append(vec, stderr)
-  vec = np.append(vec, intercept)
+  vec = np.append(vec, intercept/old_midi.get_end_time())
+  if firstRun:
+    feature_labels[3] = 'Linear R value'
+    feature_labels[4] = 'Standard error'
+    feature_labels[5] = 'Intercept over end time'
   # print "Slope of regression: {}".format(slope)
   # print "R-value of regression: {}".format(r)
   #redo regression stats for first 10 percent of song
@@ -253,6 +264,12 @@ for row in csv_may:
   vec = np.append(vec, r)
   vec = np.append(vec, stderr)
   vec = np.append(vec, intercept/old_midi.get_end_time())
+  if firstRun:
+    # 6-9
+    feature_labels[6] = 'Variance of all offsets'
+    feature_labels[7] = 'R value first 20 percent'
+    feature_labels[8] = 'Standard error first 20 percent'
+    feature_labels[9] = 'first 20 percent intercept over end time'
   print "Slope {}".format(slope)
   print "Intercept {}".format(intercept)
 
@@ -267,6 +284,8 @@ for row in csv_may:
   amt_analysis += 2
   # vec = np.append(vec, np.std(cost_path))
   vec = np.append(vec, np.var(cost_path))
+  if firstRun:
+    feature_labels[10] = 'Variance of cost path'
   cost_path_filtered = np.copy(cost_path)
   size = cost_path_filtered.shape[0]/2
   if size % 2 == 0:
@@ -319,7 +338,8 @@ for row in csv_may:
   amt_analysis += 2
   # vec = np.append(vec, np.std(cost_path_filtered))
   vec = np.append(vec, np.var(cost_path_filtered))
-
+  if firstRun:
+    feature_labels[11] = 'Variance of filtered cost path'
 
 
   p, parab,residuals = alignment_analysis.parabola_fit(cost_path_filtered)
@@ -370,6 +390,9 @@ for row in csv_may:
   vec = np.append(vec, np.var(residuals))
   # vec = np.append(vec, nondag)
   vec = np.append(vec,np.var(res_original))
+  if firstRun:
+    feature_labels[12] = 'variance of residuals (filtered)'
+    feature_labels[13] = 'variance of residuals (not filtered)'
   # vec = np.append(vec, np.var(res_half))
   # data collection on first 5% of offsets
   first10 = offsets[0:int(.1*offsets.shape[0])]
@@ -380,6 +403,8 @@ for row in csv_may:
     first_offsets_fail = np.append(first_offsets_fail, float(np.amax(first10))/old_midi.get_end_time())
   amt_analysis += 1
   vec = np.append(vec, float(np.amax(first10))/old_midi.get_end_time())
+  if firstRun:
+    feature_labels[14] = 'ratio of max offset in first 10 percent to end time'
   # generate spectrogram of cost path and save it to see if there is anything worthwhile there
   # specgram_folder = '../data/cost_spectrograms'
   # if not os.path.exists(specgram_folder):
@@ -415,49 +440,49 @@ for row in csv_may:
 
   # beat track differences
   # cache for other runs
-  if not os.path.exists(os.path.join(beat_path, row[0]+'.mat')):
-    m_tempo, m_beats = librosa.beat.beat_track(midi_audio, fs)
-    a_tempo, a_beats = librosa.beat.beat_track(mp3_audio, fs)
-    scipy.io.savemat(os.path.join(beat_path, row[0]+'.mat'), {'m_beats': m_beats,
-                                                             'm_tempo': m_tempo,
-                                                             'a_beats': a_beats,
-                                                             'a_tempo': a_tempo})
-
-
-  else:
-    beat_mat = scipy.io.loadmat(os.path.join(beat_path, row[0]+'.mat'))
-    m_tempo = beat_mat['m_tempo'][0,0]
-    m_beats = beat_mat['m_beats'][0,:]
-    a_tempo = beat_mat['a_tempo'][0,0]
-    a_beats = beat_mat['a_beats'][0,:]
-
-  m_beatsP, a_beatsP, amt_pad = alignment_analysis.pad_lesser_vec(m_beats, a_beats)
-  m_beats, a_beats, amt_trunc = alignment_analysis.truncate_greater_vec(m_beats, a_beats)
-  beat_diff = librosa.frames_to_time(np.absolute(np.subtract(m_beats, a_beats)))
-  temp_modDiv = (max(m_tempo, a_tempo)/min(m_tempo, a_tempo))
-  temp_mod = abs((m_tempo%2)-(a_tempo%2))
-  beat_cosine = np.dot(m_beats, a_beats)/(np.linalg.norm(m_beats)*np.linalg.norm(a_beats))
-  if success == 1:
-    tempo_diff_pass = np.append(tempo_diff_pass, temp_modDiv)
-    beat_cos_pass = np.append(beat_cos_pass, beat_cosine)
-  else:
-    tempo_diff_fail = np.append(tempo_diff_fail, temp_modDiv)
-    beat_cos_fail = np.append(beat_cos_fail, beat_cosine)
-
-  # aggregate features and targets
-  vec = np.append(vec, cosine)
-  vec = np.append(vec, beat_cosine)
-  vec = np.append(vec, temp_mod)
-  vec = np.append(vec, abs(m_tempo-a_tempo))
-  vec = np.append(vec, amt_pad)
-  dataVec = alignment_analysis.get_X(mat_out, mp3_source, old_midi_path, aligned_midi_path)
-  print "INCOMING CHECK IF THIS WORKS"
-  print np.subtract(vec, dataVec)
-  print "__________"
-  print "DIFF IN TEMPO : {}".format(abs(m_tempo-a_tempo))
-  print "DIFF IN TEMPO MOD 2 EACH OPERAND: {}".format(abs((m_tempo%2)-(a_tempo%2)))
-  print "TempModDiv {}".format(temp_modDiv)
-  print "EXTRA BEATS NECESSARY: {}".format(amt_pad)
+  # if not os.path.exists(os.path.join(beat_path, row[0]+'.mat')):
+  #   m_tempo, m_beats = librosa.beat.beat_track(midi_audio, fs)
+  #   a_tempo, a_beats = librosa.beat.beat_track(mp3_audio, fs)
+  #   scipy.io.savemat(os.path.join(beat_path, row[0]+'.mat'), {'m_beats': m_beats,
+  #                                                            'm_tempo': m_tempo,
+  #                                                            'a_beats': a_beats,
+  #                                                            'a_tempo': a_tempo})
+  #
+  #
+  # else:
+  #   beat_mat = scipy.io.loadmat(os.path.join(beat_path, row[0]+'.mat'))
+  #   m_tempo = beat_mat['m_tempo'][0,0]
+  #   m_beats = beat_mat['m_beats'][0,:]
+  #   a_tempo = beat_mat['a_tempo'][0,0]
+  #   a_beats = beat_mat['a_beats'][0,:]
+  #
+  # m_beatsP, a_beatsP, amt_pad = alignment_analysis.pad_lesser_vec(m_beats, a_beats)
+  # m_beats, a_beats, amt_trunc = alignment_analysis.truncate_greater_vec(m_beats, a_beats)
+  # beat_diff = librosa.frames_to_time(np.absolute(np.subtract(m_beats, a_beats)))
+  # temp_modDiv = (max(m_tempo, a_tempo)/min(m_tempo, a_tempo))
+  # temp_mod = abs((m_tempo%2)-(a_tempo%2))
+  # beat_cosine = np.dot(m_beats, a_beats)/(np.linalg.norm(m_beats)*np.linalg.norm(a_beats))
+  # if success == 1:
+  #   tempo_diff_pass = np.append(tempo_diff_pass, temp_modDiv)
+  #   beat_cos_pass = np.append(beat_cos_pass, beat_cosine)
+  # else:
+  #   tempo_diff_fail = np.append(tempo_diff_fail, temp_modDiv)
+  #   beat_cos_fail = np.append(beat_cos_fail, beat_cosine)
+  #
+  # # aggregate features and targets
+  # vec = np.append(vec, cosine)
+  # vec = np.append(vec, beat_cosine)
+  # vec = np.append(vec, temp_mod)
+  # vec = np.append(vec, abs(m_tempo-a_tempo))
+  # vec = np.append(vec, amt_pad)
+  # dataVec = alignment_analysis.get_X(mat_out, mp3_source, old_midi_path, aligned_midi_path)
+  # print "INCOMING CHECK IF THIS WORKS"
+  # print np.subtract(vec, dataVec)
+  # print "__________"
+  # print "DIFF IN TEMPO : {}".format(abs(m_tempo-a_tempo))
+  # print "DIFF IN TEMPO MOD 2 EACH OPERAND: {}".format(abs((m_tempo%2)-(a_tempo%2)))
+  # print "TempModDiv {}".format(temp_modDiv)
+  # print "EXTRA BEATS NECESSARY: {}".format(amt_pad)
   dataX = np.vstack((dataX, vec))
 
 
@@ -715,6 +740,8 @@ exF = np.extract(conditionF, norm_diff_fail)
 print "percent of extracted pass {}".format(float(exP.shape[0])/norm_diff_pass.shape[0])
 print "percent of extracted fail {}".format(float(exF.shape[0])/norm_diff_fail.shape[0])
 path_for_dataX = '../data/ML_info-no_repeats'
+# path_for_dataX = '../data/ML_info'
+
 if not os.path.exists(path_for_dataX):
   os.mkdir(path_for_dataX)
 print dataY.shape
