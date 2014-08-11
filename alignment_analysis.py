@@ -70,17 +70,9 @@ def get_cost_path(p,q,similarity_matrix):
     cost_path = np.append(cost_path, similarity_matrix[p[i],q[i]])
   return cost_path
 
-def get_regression_stats(m_aligned,m, offsets = None, note_ons = None):
+def get_regression_stats(offsets, note_ons):
   ''' Used for performing linear regression stats on the aligned offsets '''
-  if offsets == None or note_ons == None:
-    offsets, note_ons = get_offsets(m_aligned, m)
-
-  else:
-    note_ons = np.array([note.start for instrument in m.instruments for note in instrument.notes])
-    aligned_note_ons = np.array([note.start for instrument in m_aligned.instruments for note in instrument.notes])
-    last = min(note_ons.shape[0],aligned_note_ons.shape[0])
-
-  last = min(note_ons.shape[0], offsets.shape[0])
+  last = min(note_ons.shape[0],offsets.shape[0])
   slope, intercept, r_value, p_value, std_err = scipy.stats.linregress(note_ons[0:last-1],offsets[0:last-1])
   return slope, intercept, r_value, p_value, std_err
 
@@ -108,17 +100,19 @@ def get_non_diagonal_steps(p,q):
       current = q[j]
   return horiz, vert
 
-def parabola_fit(cost_path):
+def parabola_fit(filter_cost_path, cost_path, start, end):
   ''' Returns polynomial coefficients and fit value for parabolic fit of data '''
-  x = np.arange(start = 0, stop = cost_path.shape[0])
-  p = np.polyfit(x =x, y =cost_path, deg = 2)
+  x = np.arange(start = 0, stop = filter_cost_path.shape[0])
+  p = np.polyfit(x =x, y =filter_cost_path, deg = 2)
   # build residuals because apparently numpy just gives the sum of them, and actual parabola because why not
   parab = p[2]+p[1]*x+p[0]*x**2
+
   # residuals = np.zeros(x.shape)
-  residuals = np.subtract(cost_path, parab)
+  residuals_filt = np.subtract(filter_cost_path, parab)
+  res_original = np.subtract(cost_path[start:end], parab)
   # for i in xrange(residuals.shape[0]):
   #   residuals[i] = cost_path[i]-parab[i]
-  return p, parab,residuals
+  return parab, residuals_filt, res_original
 
 def pad_lesser_vec(vec1, vec2):
   ''' Returns input vectors with the one of greater length unchanged, and
@@ -159,120 +153,127 @@ def util_print(data_y, data_names):
     print '{0}, {1}'.format(data_names[i], data_y[i])
 
 
+def get_weighted_score(mat_path = None, score = None, mat_file = None):
+  ''' Collects weighted score by loading data from a mat file, or regurgitating back an input '''
+  if score is not None:
+    return score
+  elif mat_file is not None:
+    return mat_file['score']
+  elif mat_path is not None:
+    mf = scipy.io.loadmat(mat_path)
+    return mf['score']
+  else:
+    return 1
 
-def get_X(mat_file_path, mp3_path, old_midi_path, aligned_midi_path):
-  ''' gets the current version of the vector used for the classifier '''
-  vec = np.zeros((0,))
-
-  # load all relevant files
-  mat_file = scipy.io.loadmat(mat_file_path)
-  comp_mp3 = librosa.load(mp3_path, mono = 0)
-  aligned_midi = pretty_midi.PrettyMIDI(aligned_midi_path)
-  old_midi = pretty_midi.PrettyMIDI(old_midi_path)
-  # 1. weighted score
-  score = mat_file['score']
-
-  vec = np.append(vec, score)
-  # 2. magnitude of sim_mat
-  sim_mat = mat_file['similarity_matrix']
-  norm_mat = np.sum(sim_mat)/(sim_mat.shape[0]*sim_mat.shape[1])
-
-  vec = np.append(vec, norm_mat)
-  # 3-5 - r value, stderr, and intercept of offset path
-  offsets, note_ons = get_offsets(aligned_midi, old_midi)
-  slope, intercept, r, p_err, stderr = get_regression_stats(aligned_midi, old_midi, offsets, note_ons)
-
-  vec = np.append(vec, r)
-
-  vec = np.append(vec, stderr)
-
-  vec = np.append(vec, intercept)
-
-  # 6 variance of all offsets
-
-  vec = np.append(vec, np.var(offsets))
+def get_normalized_sim_mat(mat_path = None, mat_file = None, similarity_matrix = None):
+  ''' Returns normalized magnitude of similarity matrix '''
+  if similarity_matrix is not None:
+    return np.sum(similarity_matrix)/(similarity_matrix.shape[0]*similarity_matrix.shape[1])
+  elif mat_file is not None:
+    sim_mat = mat_file['similarity_matrix']
+    return np.sum(sim_mat)/(sim_mat.shape[0]*sim_mat.shape[1])
+  elif mat_path is not None:
+    mf = scipy.io.loadmat(mat_path)
+    sim_mat = mf['similarity_matrix']
+    np.sum(sim_mat)/(sim_mat.shape[0]*sim_mat.shape[1])
+  else:
+    return 1
 
 
-  # 7-9 r, stderr, intercept of first 20% of offsets
-  slope, intercept, r, p_err, stderr = get_regression_stats(aligned_midi, old_midi, offsets[0:offsets.shape[0]*.2], note_ons[0:offsets.shape[0]*.2])
 
-  vec = np.append(vec, r)
+def get_mag_diff(score, similarity_matrix):
+  return abs(score-get_normalized_sim_mat(similarity_matrix = similarity_matrix))
+
+def lin_regress_stats(offsets, note_ons):
+  ''' gets relevant regression stats for offsets '''
+  if offsets is not None and note_ons is not None:
+    slope, intercept, r_value, p_value, std_err = get_regression_stats(offsets, note_ons)
+    return r_value, std_err, intercept
 
 
-  vec = np.append(vec, stderr)
-
-
-  vec = np.append(vec, intercept)
-
-  # 10-11 variance of cost path and filtered cost path
-  cost_path = get_cost_path(mat_file['p'],mat_file['q'],sim_mat)
-
-  vec = np.append(vec, np.var(cost_path))
-
+def filter_cost_path(cost_path):
   cost_path_filtered = np.copy(cost_path)
   size = cost_path_filtered.shape[0]/2
   if size % 2 == 0:
     size +=1
-
   cost_path_filtered = scipy.signal.medfilt(cost_path, kernel_size = size)
   start = int(cost_path_filtered.shape[0]*.05)
   end = int(cost_path_filtered.shape[0]*.95)
-  cost_path_filtered = cost_path_filtered[start:end]
-
-  vec = np.append(vec, np.var(cost_path_filtered))
-
-  # 12/13 np.var(residuals) from doing parabolic fit between filtered and original
-  p, parab,residuals = parabola_fit(cost_path_filtered)
-  vec = np.append(vec, np.var(residuals))
+  return cost_path_filtered[start:end], start, end
 
 
-  vec = np.append(vec, np.var(np.subtract(cost_path[start:end], parab)))
+def get_feature_vector(aligned_midi, old_midi, similarity_matrix, p,q,score, include_labels = False):
+  ''' Returns feature vector for machine learning application. Built to be used inline with midi alignment '''
+  vec = np.empty((0,))
+  dtype = np.dtype('S50')
+  fLabels = np.empty((0,))
+  #  - weighted score - gotten right from alignment
+  vec = np.append(vec, score)
+  fLabels = np.append(fLabels, 'Weighted Score')
+  #  - normalized magnitude of matrix
+  vec = np.append(vec, get_normalized_sim_mat(similarity_matrix = similarity_matrix))
+  fLabels = np.append(fLabels, 'Average Sim-Mat Value')
+  #  - difference between score and magnitude of matrix
+  vec = np.append(vec, get_mag_diff(score, similarity_matrix))
+  fLabels = np.append(fLabels, 'Difference of Score and Average Sim-Mat')
+  #  - R value of linear regression of offsets (will collect all stats now)
+  # first get offsets
+  offsets, note_ons = get_offsets(aligned_midi, old_midi)
+  r, stderr, intercept = lin_regress_stats(offsets = offsets, note_ons = note_ons)
+  vec = np.append(vec, r)
+  fLabels = np.append(fLabels, 'Lin Fit of Offsets- R')
+  vec = np.append(vec, stderr)
+  fLabels = np.append(fLabels, 'Lin Fit of Offsets- Stderr')
+  vec = np.append(vec, intercept/old_midi.get_end_time())
+  fLabels = np.append(fLabels, 'Lin Fit of Offsets- Intercept/End Time')
 
-  # 14 ratio of end time to max of first 10 percent of offset
-  first10 = offsets[0:int(.1*offsets.shape[0])]
-  vec = np.append(vec, float(np.amax(first10))/old_midi.get_end_time())
+  #  variance of offsets
+  vec = np.append(vec, np.var(offsets))
+  fLabels = np.append(fLabels, 'Variance of Offsets')
+  # standard dev of offsets
+  vec = np.append(vec, np.std(offsets))
+  fLabels = np.append(fLabels, 'Standard Dev of Offsets')
+  # linear relations using first 20 percent of offset data
+  r2, stderr2, intercept2 = lin_regress_stats(offsets = offsets[0:offsets.shape[0]*.2], note_ons = note_ons[0:offsets.shape[0]*.2])
+  # r value of first 20 percent
+  vec = np.append(vec, r2)
+  fLabels = np.append(fLabels,'20 Percent Lin Fit Offsets -R')
+  # intercept of first 20 percent
+  vec = np.append(vec, intercept/old_midi.get_end_time())
+  fLabels = np.append(fLabels, '20 Percent Lin Fit Offsets - Intercept/End Time')
+  # ratio of max value in first 10 percent of offsets to end time
+  vec = np.append(vec, np.amax(offsets[0:offsets.shape[0]*.1])/old_midi.get_end_time())
+  fLabels = np.append(fLabels, 'First 10 percent Offsets- Max Value/End Time')
 
-  # cosine distance of loaded comparison files
-  beat_path = '../data/beat_info'
-  comp_audio, fs = librosa.load(mp3_path, mono = False)
-  # print "shape of comp_audio {}".format(comp_audio.shape)
-  midi_audio = comp_audio[0,:]
-  mp3_audio = comp_audio[1,:]
-  cosine = np.dot(midi_audio, mp3_audio)/(np.linalg.norm(midi_audio)*np.linalg.norm(mp3_audio))
-  beat_mat_path = os.path.join(beat_path, os.path.splitext(os.path.basename(mp3_path))[0]+'.mat')
-  # print "beat mat path {}".format(beat_mat_path)
-  # beat track differences
-  # cache for other runs
-  if not os.path.exists(beat_mat_path):
-    m_tempo, m_beats = librosa.beat.beat_track(midi_audio, fs)
-    a_tempo, a_beats = librosa.beat.beat_track(mp3_audio, fs)
-    scipy.io.savemat(beat_mat_path, {'m_beats': m_beats,
-                                                             'm_tempo': m_tempo,
-                                                             'a_beats': a_beats,
-                                                             'a_tempo': a_tempo})
+
+
+  # cost path information
+  cost_path = get_cost_path(p,q,similarity_matrix)
+  cost_path_filt, start, end = filter_cost_path(cost_path)
+  # get parabolic fit info
+  parab, residual_filt, res_original = parabola_fit(cost_path_filt, cost_path, start, end)
+  # get datapoints of cost path- variance, standard dev, variance and std of residuals
+  vec = np.append(vec, np.var(cost_path))
+  fLabels = np.append(fLabels, 'Variance of Cost Path')
+  vec = np.append(vec, np.std(cost_path))
+  fLabels = np.append(fLabels, 'Standard Dev of Cost Path')
+
+  vec =np.append(vec, np.var(res_original))
+  fLabels = np.append(fLabels, 'Var of Residuals of Parabolic Fit (cost path)')
+  vec = np.append(vec, np.std(res_original))
+  fLabels = np.append(fLabels, 'Std of Residuals of Parabolic fit (cost path)')
+
+  #datapoints of filtered cost path
+  vec = np.append(vec, np.var(cost_path_filt))
+  fLabels = np.append(fLabels, 'Variance of Filtered Cost Path')
+  vec = np.append(vec, np.std(cost_path_filt))
+  fLabels = np.append(fLabels, 'Standard Dev of Filtered Cost Path')
+  vec =np.append(vec, np.var(residual_filt))
+  fLabels = np.append(fLabels,'Var of Residuals of filtered Parab Fit')
+  vec = np.append(vec, np.std(residual_filt))
+  fLabels = np.append(fLabels,'Std of residuals of filtered Parab Fit')
+
+  if include_labels:
+    return vec, fLabels
   else:
-    beat_mat = scipy.io.loadmat(beat_mat_path)
-    m_tempo = beat_mat['m_tempo'][0,0]
-    m_beats = beat_mat['m_beats'][0,:]
-    a_tempo = beat_mat['a_tempo'][0,0]
-    a_beats = beat_mat['a_beats'][0,:]
-  m_beatsP, a_beatsP, amt_pad = pad_lesser_vec(m_beats, a_beats)
-  m_beats, a_beats, amt_trunc = truncate_greater_vec(m_beats, a_beats)
-  beat_diff = librosa.frames_to_time(np.absolute(np.subtract(m_beats, a_beats)))
-  temp_mod = abs((m_tempo%2)-(a_tempo%2))
-  beat_cosine = np.dot(m_beats, a_beats)/(np.linalg.norm(m_beats)*np.linalg.norm(a_beats))
-
-  # aggregate features and targets
-  vec = np.append(vec, cosine)
-
-  vec = np.append(vec, beat_cosine)
-
-
-  vec = np.append(vec, temp_mod)
-
-  vec = np.append(vec, abs(m_tempo-a_tempo))
-
-  vec = np.append(vec, amt_pad)
-
-  print vec.shape
-  return vec
+    return vec
