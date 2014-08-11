@@ -10,7 +10,7 @@ def normalize_matrix(X):
   for i in xrange(X.shape[0]):
     new_X[i,:] = np.divide(np.subtract(X[i,:], col_mean), col_std)
 
-  return new_X
+  return new_X, col_mean, col_std
 
 def get_fp_fn(y_pred, y_test):
   ''' Get amount of false positives and negatives in specified output (using

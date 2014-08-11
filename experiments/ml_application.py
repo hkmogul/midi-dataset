@@ -15,18 +15,19 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 
 
-mat_path = '../data/ML_info-no_repeats/X_and_y.mat'
-# mat_path = '../data/ML_info/X_and_y.mat'
-dump_file = open('../data/ML_info-no_repeats/Rf-classifier.pkl','w')
+mat_path = '../data/ML_new/X_and_y.mat'
+# mat_path = '../data/ML_info-no_repeats/X_and_y.mat'
+dump_file = open('../data/ML_info/Rf-classifier.pkl','w')
 data = scipy.io.loadmat(mat_path)
 Xn = data['X']
 print Xn.shape
 yn = data['y']
 names = data['names']
+labels = data['labels']
 trees = 150
 
 clf = RandomForestClassifier(n_estimators = trees)
-X = ml.normalize_matrix(Xn)
+X, col_mean, col_std = ml.normalize_matrix(Xn)
 y = np.reshape(yn, (yn.shape[0],))
 
 
@@ -120,6 +121,7 @@ print "BEGINNING MULTIPLE CROSS VALIDATION, ITERATIONS = {}".format(amt)
 print "-----"
 
 scores = np.empty((amt,))
+scores_thresh = np.empty((amt,))
 false_pos = np.empty((amt,))
 false_neg = np.empty((amt,))
 precision_arr = np.empty((amt,))
@@ -166,6 +168,7 @@ with PdfPages('Multiple Iterations ROC.pdf') as pdf:
     print "ROC-AUC Score: {}".format(roc_auc)
     print "# of Thresholds: {}".format(roc_thresholds.shape[0])
     scores[i] = s
+    scores_thresh[i] = ml.get_accuracy(y_test, y_thresh)
     false_pos[i] = fp
     false_neg[i] = fn
     precision_arr[i] = precision
@@ -175,7 +178,7 @@ with PdfPages('Multiple Iterations ROC.pdf') as pdf:
     auc_arr[i] = area
     roc_auc_arr[i] = roc_auc
 
-    
+
     plt.figure()
     plt.plot(fpr, tpr, label='ROC curve (area = %0.2f)' % roc_auc)
     plt.plot([0, 1], [0, 1], 'k--')
@@ -183,7 +186,7 @@ with PdfPages('Multiple Iterations ROC.pdf') as pdf:
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('Receiver operating characteristic- iteration # {}'.format(i))
+    plt.title('Receiver operating characteristic- iteration # {}'.format(i+1))
     plt.legend(loc="lower right")
     pdf.savefig()
     plt.close()
@@ -192,6 +195,10 @@ print "Amount of test datapoints per iteration: {}".format(y_test.shape[0])
 print "AVERAGE ACCURACY IN MULTIPLE: %0.2f %%" %(100*np.mean(scores))
 print "Maximum accuracy: %0.2f %%" %(100*np.amax(scores))
 print "Minimum accuracy: %0.2f %%" %(100*np.amin(scores))
+
+print "AVERAGE ACCURACY IN MULTIPLE (using threshold): %0.2f %%" %(100*np.mean(scores_thresh))
+print "Maximum accuracy (using threshold): %0.2f %%" %(100*np.amax(scores_thresh))
+print "Minimum accuracy (using threshold): %0.2f %%" %(100*np.amin(scores_thresh))
 
 print "AVERAGE AMT OF FALSE POSITIVES: {}".format(np.mean(false_pos))
 print "Minimum # of false positives: {}".format(np.amin(false_pos))
@@ -209,7 +216,14 @@ print "----------"
 
 
 print "Data about first classifier"
-print clf.feature_importances_
+
+print np.argsort(clf.feature_importances_)
+# for i in xrange(labels.shape[0]):
+for i in np.argsort(clf.feature_importances_):
+  print '{0}, Importance: {1}'.format(labels[i], clf.feature_importances_[i])
+
+
+print 'least effective: \n {0}, {1}'.format(labels[np.argmin(clf.feature_importances_)], np.amin(clf.feature_importances_))
 # print "Repeating cross validation experiment for SVC"
 # for i in xrange(amt):
 #   # use the index to generate random state because why not
