@@ -201,21 +201,34 @@ def filter_cost_path(cost_path):
   end = int(cost_path_filtered.shape[0]*.95)
   return cost_path_filtered[start:end], start, end
 
-
+def get_current_feature_amt():
+  return 20
+def mag_ratio(similarity_matrix, score):
+  return score/get_normalized_sim_mat(similarity_matrix = similarity_matrix)
 def get_feature_vector(aligned_midi, old_midi, similarity_matrix, p,q,score, include_labels = False):
   ''' Returns feature vector for machine learning application. Built to be used inline with midi alignment '''
   vec = np.empty((0,))
+
   dtype = np.dtype('S50')
   fLabels = np.empty((0,))
   #  - weighted score - gotten right from alignment
   vec = np.append(vec, score)
+
   fLabels = np.append(fLabels, 'Weighted Score')
   #  - normalized magnitude of matrix
   vec = np.append(vec, get_normalized_sim_mat(similarity_matrix = similarity_matrix))
+
+
   fLabels = np.append(fLabels, 'Average Sim-Mat Value')
   #  - difference between score and magnitude of matrix
   vec = np.append(vec, get_mag_diff(score, similarity_matrix))
+
+
   fLabels = np.append(fLabels, 'Difference of Score and Average Sim-Mat')
+
+  vec = np.append(vec, mag_ratio(similarity_matrix, score))
+
+  fLabels = np.append(fLabels, 'Ratio of Score and Average Sim-Mat')
   #  - R value of linear regression of offsets (will collect all stats now)
   # first get offsets
   offsets, note_ons = get_offsets(aligned_midi, old_midi)
