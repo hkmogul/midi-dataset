@@ -48,7 +48,7 @@ def get_mp3_name(line):
 
 
 BASE_PATH = '../data/cal500_txt/'
-dataX = np.zeros((0,19))
+dataX = np.zeros((0,alignment_analysis.get_current_feature_amt()))
 dataY = np.zeros((0,1))
 dataNames = np.empty((0,))
 dtype = np.dtype('S50')

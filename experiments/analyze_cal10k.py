@@ -25,48 +25,55 @@ def row_to_filenames(row):
 base_path = '../../../../../../Volumes/HKM-MEDIA/cal10k'
 filename = os.path.join(base_path, 'Cal10k Labeling.csv')
 
-output_path = '../data/cal500-ml_info'
+output_path = '../data/cal10k-ml_info'
 if not os.path.exists(output_path):
   os.mkdir(output_path)
 
-dataX = np.zeros((0,19))
+dataX = np.zeros((0,alignment_analysis.get_current_feature_amt()))
 dataY = np.zeros((0,1))
 dataNames = np.empty((0,))
 dtype = np.dtype('S50')
 feature_labels = np.empty((0,))
 firstRun = True
 song_names = np.empty((0,))
-
+print dataX.shape
 with open(filename, 'r') as csvfile:
   reader = csv.reader(csvfile)
   # skip first row of headers
   reader.next()
   for row in reader:
     output_name, mp3_name, midi_name = row_to_filenames(row[0])
-    if not firstRun:
-      if row[2] is '':
-        print "score is blank!"
-      if mp3_name in song_names or row[2] is '' or row[2] is ' ':
-        print "{} already analyzed or no score, moving on".format(midi_name)
-        continue
+    # if row[2] is '':
+    #   print "score is blank!"
+    #   continue
+    try:
+      success = int(row[2])
+    except:
+      print 'invalid success measure, skipping'
+      continue
+    if mp3_name in song_names:
+      print "{} already analyzed".format(midi_name)
+      continue
     dataNames = np.append(dataNames, midi_name)
     song_names = np.append(song_names, mp3_name)
-    print row
+    print "Analyzing {0}, Success = {1}, Score = {2}".format(midi_name, success, row[1])
     mat_name = os.path.splitext(row[0])[0]+'.mat'
     mat_file = scipy.io.loadmat(os.path.join(base_path,'midi-aligned-additive-dpmod', mat_name))
     p = mat_file['p']
     q = mat_file['q']
     score = mat_file['score']
     sim_mat = mat_file['similarity_matrix']
-    success = int(row[2])
     aligned_midi = pretty_midi.PrettyMIDI(os.path.join(base_path,'midi-aligned-additive-dpmod', output_name))
     old_midi = pretty_midi.PrettyMIDI(os.path.join('../data/cal500_txt/Clean_MIDIs',midi_name))
     if firstRun:
       vec, feature_labels = alignment_analysis.get_feature_vector(aligned_midi, old_midi, sim_mat, p,q,score, include_labels = True)
       firstRun = False
     else:
-      vec =  alignment_analysis.get_feature_vector(aligned_midi, old_midi, sim_mat, p,q,score, include_labels = True)
-
+      vec =  alignment_analysis.get_feature_vector(aligned_midi, old_midi, sim_mat, p,q,score, include_labels = False)
+    print vec.shape
     dataX = np.vstack((dataX, vec))
     dataY = np.vstack((dataY, np.array([success])))
+    print "-----"
+  print "----- \n.mat saved at {}".format(os.path.join(output_path,'X and Y.mat'))
+  print dataX.shape
   scipy.io.savemat(os.path.join(output_path, 'X and Y.mat'), {'X': dataX, 'y' : dataY, 'labels': feature_labels, 'names': dataNames})
